@@ -745,7 +745,15 @@ function Workspace() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center justify-end gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => signOutUser()}
+              className="sm:hidden inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 whitespace-nowrap"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sair</span>
+            </button>
             <button
               type="button"
               onClick={() => exportMonthlyCsv(selectedMonth, monthItems)}
