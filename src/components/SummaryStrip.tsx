@@ -43,11 +43,15 @@ export function SummaryStrip({ items }: SummaryStripProps) {
       }
     } else if (item.category === 'bobina') {
       bobinaUnidades += item.unidades;
-      bobinaKg += item.kg;
+      if (item.hasLabel || !item.hasScaleWeight) {
+        bobinaKg += item.kg;
+      }
     } else if (item.category === 'barra') {
       barraTotalItens += 1;
       barraQtd += item.qtdBarras;
-      barraKg += item.kg;
+      if (item.hasLabel || !item.hasScaleWeight) {
+        barraKg += item.kg;
+      }
       if (item.hasScaleWeight) {
         barraBalancaKg += item.scaleWeightKg;
       }

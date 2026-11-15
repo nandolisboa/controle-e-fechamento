@@ -15,6 +15,7 @@ import {
   MAX_LABEL_LENGTH,
   MAX_MEDIDA_LENGTH,
   MAX_MONTH_NOTES_LENGTH,
+  MAX_NOTA_FISCAL_LENGTH,
   MAX_NOTES_LENGTH,
   MAX_NUMERIC_VALUE,
 } from '../types/inventory';
@@ -43,6 +44,16 @@ export function mergeMergedNotes(existingNotes: string, incomingNotes: string): 
   return `${a} · ${b}`.slice(0, MAX_NOTES_LENGTH);
 }
 
+export function mergeMergedNotaFiscal(existingNf: string, incomingNf: string): string {
+  const a = existingNf.trim();
+  const b = incomingNf.trim();
+  if (!a) return b.slice(0, MAX_NOTA_FISCAL_LENGTH);
+  if (!b) return a.slice(0, MAX_NOTA_FISCAL_LENGTH);
+  const existingParts = a.split(' · ').map((p) => p.trim()).filter(Boolean);
+  if (existingParts.includes(b)) return a.slice(0, MAX_NOTA_FISCAL_LENGTH);
+  return `${a} · ${b}`.slice(0, MAX_NOTA_FISCAL_LENGTH);
+}
+
 export function buildMonthDocId(uid: string, monthKey: string): string {
   return `${uid}_${monthKey}`;
 }
@@ -51,6 +62,7 @@ export function sanitizeItemInput(input: InventoryItemInput): InventoryItemInput
   const bitola = sanitizeText(input.bitola, MAX_BITOLA_LENGTH);
   const medida = input.category === 'estribo' ? sanitizeText(input.medida, MAX_MEDIDA_LENGTH) : '';
   const labelCode = input.hasLabel ? sanitizeText(input.labelCode, MAX_LABEL_LENGTH) : '';
+  const notaFiscal = sanitizeText(input.notaFiscal ?? '', MAX_NOTA_FISCAL_LENGTH);
   const notes = sanitizeText(input.notes, MAX_NOTES_LENGTH);
 
   return {
@@ -68,6 +80,7 @@ export function sanitizeItemInput(input: InventoryItemInput): InventoryItemInput
     hasScaleWeight: Boolean(input.hasScaleWeight),
     scaleWeightKg: input.hasScaleWeight ? clampNonNegative(input.scaleWeightKg) : 0,
     wireType: input.category === 'arame' ? input.wireType : 'none',
+    notaFiscal,
     notes,
   };
 }
@@ -163,6 +176,10 @@ export async function createInventoryItem(
           qtdPecas: clampNonNegative(existingMatch.qtdPecas + sanitized.qtdPecas),
           qtdPacotes: clampNonNegative(existingMatch.qtdPacotes + sanitized.qtdPacotes),
           kg: clampNonNegative(existingMatch.kg + sanitized.kg),
+          notaFiscal: mergeMergedNotaFiscal(
+            existingMatch.notaFiscal ?? '',
+            sanitized.notaFiscal ?? ''
+          ),
           notes: mergeMergedNotes(existingMatch.notes, sanitized.notes),
           updatedAt: serverTimestamp(),
         });
@@ -215,7 +232,7 @@ export async function createInventoryItemsBatch(
 
   const aggregatedUpdates = new Map<
     string,
-    { id: string; qtdPecas: number; qtdPacotes: number; kg: number; notes: string }
+    { id: string; qtdPecas: number; qtdPacotes: number; kg: number; notaFiscal: string; notes: string }
   >();
   const aggregatedCreates = new Map<string, InventoryItemInput>();
   const nonEstriboCreates: InventoryItemInput[] = [];
@@ -239,6 +256,7 @@ export async function createInventoryItemsBatch(
         qtdPecas: existing.qtdPecas,
         qtdPacotes: existing.qtdPacotes,
         kg: existing.kg,
+        notaFiscal: existing.notaFiscal ?? '',
         notes: existing.notes,
       };
       aggregatedUpdates.set(existing.id, {
@@ -246,6 +264,7 @@ export async function createInventoryItemsBatch(
         qtdPecas: clampNonNegative(prev.qtdPecas + sanitized.qtdPecas),
         qtdPacotes: clampNonNegative(prev.qtdPacotes + sanitized.qtdPacotes),
         kg: clampNonNegative(prev.kg + sanitized.kg),
+        notaFiscal: mergeMergedNotaFiscal(prev.notaFiscal, sanitized.notaFiscal ?? ''),
         notes: mergeMergedNotes(prev.notes, sanitized.notes),
       });
     } else {
@@ -256,6 +275,10 @@ export async function createInventoryItemsBatch(
           qtdPecas: clampNonNegative(prevCreate.qtdPecas + sanitized.qtdPecas),
           qtdPacotes: clampNonNegative(prevCreate.qtdPacotes + sanitized.qtdPacotes),
           kg: clampNonNegative(prevCreate.kg + sanitized.kg),
+          notaFiscal: mergeMergedNotaFiscal(
+            prevCreate.notaFiscal ?? '',
+            sanitized.notaFiscal ?? ''
+          ),
           notes: mergeMergedNotes(prevCreate.notes, sanitized.notes),
         });
       } else {
@@ -270,6 +293,7 @@ export async function createInventoryItemsBatch(
       qtdPecas: update.qtdPecas,
       qtdPacotes: update.qtdPacotes,
       kg: update.kg,
+      notaFiscal: update.notaFiscal,
       notes: update.notes,
       updatedAt: serverTimestamp(),
     });
@@ -325,6 +349,10 @@ export async function updateInventoryItem(
         qtdPecas: clampNonNegative(otherMatch.qtdPecas + sanitized.qtdPecas),
         qtdPacotes: clampNonNegative(otherMatch.qtdPacotes + sanitized.qtdPacotes),
         kg: clampNonNegative(otherMatch.kg + sanitized.kg),
+        notaFiscal: mergeMergedNotaFiscal(
+          otherMatch.notaFiscal ?? '',
+          sanitized.notaFiscal ?? ''
+        ),
         notes: mergeMergedNotes(otherMatch.notes, sanitized.notes),
         updatedAt: serverTimestamp(),
       });
@@ -389,6 +417,7 @@ export async function copyMonthItems(
       hasScaleWeight: src.hasScaleWeight,
       scaleWeightKg: src.scaleWeightKg,
       wireType: src.wireType,
+      notaFiscal: src.notaFiscal ?? '',
       notes: src.notes,
     });
 

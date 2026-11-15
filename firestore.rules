@@ -63,7 +63,7 @@ service cloud.firestore {
         'ownerId', 'monthDocId', 'monthKey', 'category', 'bitola', 'medida',
         'qtdPecas', 'qtdPacotes', 'unidades', 'qtdBarras', 'kg',
         'measurementMode', 'hasLabel', 'labelCode', 'hasScaleWeight',
-        'scaleWeightKg', 'wireType', 'notes', 'createdAt', 'updatedAt'
+        'scaleWeightKg', 'wireType', 'notaFiscal', 'notes', 'createdAt', 'updatedAt'
       ]) &&
       data.ownerId is string &&
       data.ownerId == request.auth.uid &&
@@ -98,6 +98,7 @@ service cloud.firestore {
       isNonNegNum(data.scaleWeightKg) &&
       data.wireType is string &&
       data.wireType in ['none', 'liso', 'torcido'] &&
+      (!('notaFiscal' in data) || (data.notaFiscal is string && data.notaFiscal.size() <= 60)) &&
       data.notes is string &&
       data.notes.size() <= 300 &&
       data.createdAt is timestamp &&
@@ -164,7 +165,7 @@ service cloud.firestore {
           incoming().diff(existing()).affectedKeys().hasOnly([
             'category', 'bitola', 'medida', 'qtdPecas', 'qtdPacotes', 'unidades',
             'qtdBarras', 'kg', 'measurementMode', 'hasLabel', 'labelCode',
-            'hasScaleWeight', 'scaleWeightKg', 'wireType', 'notes', 'updatedAt'
+            'hasScaleWeight', 'scaleWeightKg', 'wireType', 'notaFiscal', 'notes', 'updatedAt'
           ])
         );
 

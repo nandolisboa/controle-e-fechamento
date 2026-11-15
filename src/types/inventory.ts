@@ -5,6 +5,7 @@ export type WireType = 'none' | 'liso' | 'torcido';
 export const MAX_BITOLA_LENGTH = 60;
 export const MAX_MEDIDA_LENGTH = 60;
 export const MAX_LABEL_LENGTH = 60;
+export const MAX_NOTA_FISCAL_LENGTH = 60;
 export const MAX_NOTES_LENGTH = 300;
 export const MAX_MONTH_NOTES_LENGTH = 500;
 export const MAX_NUMERIC_VALUE = 100000000;
@@ -38,6 +39,7 @@ export interface InventoryItem {
   hasScaleWeight: boolean;
   scaleWeightKg: number;
   wireType: WireType;
+  notaFiscal?: string;
   notes: string;
   createdAt?: unknown;
   updatedAt?: unknown;
@@ -58,6 +60,7 @@ export interface InventoryItemInput {
   hasScaleWeight: boolean;
   scaleWeightKg: number;
   wireType: WireType;
+  notaFiscal?: string;
   notes: string;
 }
 
@@ -81,14 +84,14 @@ export const CATEGORIES: CategoryMeta[] = [
     id: 'bobina',
     label: 'Bobinas',
     shortLabel: 'Bobinas',
-    description: 'Bitola, Unidade e Kg',
+    description: 'Bitola, Unidade e Etiqueta ou Balança (Kg)',
     bitolaPresets: ['3.8 mm', '4.2 mm', '5.0 mm', '6.0 mm'],
   },
   {
     id: 'barra',
     label: 'Barras',
     shortLabel: 'Barras',
-    description: 'Bitola, Qtd. Barras ou Kg, Etiqueta e Balança',
+    description: 'Bitola, Qtd. Barras e Etiqueta ou Balança (Kg)',
     bitolaPresets: ['4.2 mm', '5.0 mm', '6.3 mm', '8.0 mm', '10.0 mm'],
   },
   {

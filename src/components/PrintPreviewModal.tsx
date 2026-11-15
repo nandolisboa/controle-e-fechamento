@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Printer, X } from 'lucide-react';
+import { consolidateInventoryItems } from '../lib/consolidation';
 import {
   CATEGORY_MAP,
   formatArameBoxes,
@@ -24,24 +25,7 @@ interface PrintPreviewModalProps {
   hasActiveFilters: boolean;
 }
 
-const naturalCollator = new Intl.Collator('pt-BR', {
-  numeric: true,
-  sensitivity: 'base',
-});
-
-function parseBitolaNumeric(bitola: string): number {
-  const match = bitola.replace(',', '.').match(/(\d+(?:\.\d+)?)/);
-  if (!match) return Number.POSITIVE_INFINITY;
-  const num = Number.parseFloat(match[1]);
-  return Number.isNaN(num) ? Number.POSITIVE_INFINITY : num;
-}
-
-function compareBitolaAsc(a: string, b: string): number {
-  const numA = parseBitolaNumeric(a);
-  const numB = parseBitolaNumeric(b);
-  if (numA !== numB) return numA - numB;
-  return naturalCollator.compare(a, b);
-}
+type PrintDetailLevel = 'simplificado' | 'detalhado';
 
 export function PrintPreviewModal({
   isOpen,
@@ -54,13 +38,13 @@ export function PrintPreviewModal({
   filteredItems,
   hasActiveFilters,
 }: PrintPreviewModalProps) {
+  const [detailLevel, setDetailLevel] = useState<PrintDetailLevel>('simplificado');
   const [scope, setScope] = useState<'current' | 'all'>('current');
-  const [showEstriboSummary, setShowEstriboSummary] = useState(true);
 
   useEffect(() => {
     if (!isOpen) return;
+    setDetailLevel('simplificado');
     setScope('current');
-    setShowEstriboSummary(true);
   }, [isOpen]);
 
   useEffect(() => {
@@ -81,105 +65,13 @@ export function PrintPreviewModal({
     effectiveCategory === 'all'
       ? scope === 'current' && hasActiveFilters
         ? 'Visão Geral (filtrada)'
-        : 'Mês completo (todas as categorias)'
+        : 'Inventário Completo do Mês'
       : CATEGORY_MAP[effectiveCategory].label;
 
-  const estriboRows = useMemo(() => {
-    const estribos = itemsToPrint.filter((item) => item.category === 'estribo');
-    const map = new Map<
-      string,
-      {
-        key: string;
-        bitola: string;
-        medida: string;
-        qtdPecas: number;
-        qtdPacotes: number;
-        kg: number;
-      }
-    >();
-
-    for (const item of estribos) {
-      const bitola = item.bitola.trim() || '—';
-      const medida = item.medida.trim().replace(/\s+/g, ' ') || 'Sem medida';
-      const key = `${bitola.toLowerCase()}::${medida.toLowerCase()}`;
-      const existing = map.get(key);
-      if (existing) {
-        existing.qtdPecas += item.qtdPecas;
-        existing.qtdPacotes += item.qtdPacotes;
-        existing.kg += item.kg;
-      } else {
-        map.set(key, {
-          key,
-          bitola,
-          medida,
-          qtdPecas: item.qtdPecas,
-          qtdPacotes: item.qtdPacotes,
-          kg: item.kg,
-        });
-      }
-    }
-
-    return Array.from(map.values()).sort((a, b) => {
-      const bitolaCmp = compareBitolaAsc(a.bitola, b.bitola);
-      if (bitolaCmp !== 0) return bitolaCmp;
-      return naturalCollator.compare(a.medida, b.medida);
-    });
-  }, [itemsToPrint]);
-
-  const totals = useMemo(() => {
-    let estriboKg = 0;
-    let estriboPecas = 0;
-    let estriboPacotes = 0;
-    let bobinaUn = 0;
-    let bobinaKg = 0;
-    let barraQtd = 0;
-    let barraKg = 0;
-    let barraBalancaKg = 0;
-    let telaUn = 0;
-    let arameBoxUn = 0;
-    let arameCoilUn = 0;
-    let arameKg = 0;
-
-    for (const item of itemsToPrint) {
-      if (item.category === 'estribo') {
-        estriboKg += item.kg;
-        estriboPecas += item.qtdPecas;
-        estriboPacotes += item.qtdPacotes;
-      } else if (item.category === 'bobina') {
-        bobinaUn += item.unidades;
-        bobinaKg += item.kg;
-      } else if (item.category === 'barra') {
-        barraQtd += item.qtdBarras;
-        barraKg += item.kg;
-        if (item.hasScaleWeight) barraBalancaKg += item.scaleWeightKg;
-      } else if (item.category === 'tela_pop') {
-        telaUn += item.unidades;
-      } else if (item.category === 'arame') {
-        const m = getArameMetrics(item.unidades, item.kg, item.measurementMode);
-        arameKg += m.kg;
-        if (m.isVariedCoil) {
-          arameCoilUn += m.unidades > 0 ? m.unidades : 1;
-        } else {
-          arameBoxUn += m.unidades;
-        }
-      }
-    }
-
-    return {
-      estriboKg,
-      estriboPecas,
-      estriboPacotes,
-      bobinaUn,
-      bobinaKg,
-      barraQtd,
-      barraKg,
-      barraBalancaKg,
-      telaUn,
-      arameBoxUn,
-      arameCoilUn,
-      arameKg,
-    };
-  }, [itemsToPrint]);
+  const consolidated = useMemo(
+    () => consolidateInventoryItems(itemsToPrint),
+    [itemsToPrint]
+  );
 
   if (!isOpen) return null;
 
@@ -199,15 +91,40 @@ export function PrintPreviewModal({
       <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0 no-print">
         <div className="min-w-0">
           <h2 id="print-preview-title" className="font-display text-base font-semibold text-slate-900">
-            Visualização antes da impressão
+            Visualização do PDF / Impressão
           </h2>
           <p className="text-xs text-slate-500">
-            Confira o documento abaixo antes de enviar para a impressora ({itemsToPrint.length}{' '}
-            {itemsToPrint.length === 1 ? 'registro' : 'registros'})
+            Formato A4 · {formatMonthLabel(monthKey)} · {itemsToPrint.length}{' '}
+            {itemsToPrint.length === 1 ? 'registro' : 'registros'}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+            <button
+              type="button"
+              onClick={() => setDetailLevel('simplificado')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                detailLevel === 'simplificado'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Simplificado
+            </button>
+            <button
+              type="button"
+              onClick={() => setDetailLevel('detalhado')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                detailLevel === 'detalhado'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Detalhado
+            </button>
+          </div>
+
           {canSwitchScope && (
             <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
               <button
@@ -235,18 +152,6 @@ export function PrintPreviewModal({
             </div>
           )}
 
-          {estriboRows.length > 0 && (
-            <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer whitespace-nowrap">
-              <input
-                type="checkbox"
-                checked={showEstriboSummary}
-                onChange={(e) => setShowEstriboSummary(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-slate-300 text-orange-600 focus:ring-orange-600"
-              />
-              <span>Incluir resumo de estribos</span>
-            </label>
-          )}
-
           <button
             type="button"
             onClick={onClose}
@@ -263,234 +168,502 @@ export function PrintPreviewModal({
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-xs font-medium cursor-pointer whitespace-nowrap"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Imprimir agora</span>
+            <span>Imprimir / Salvar PDF</span>
           </button>
         </div>
       </div>
 
       {/* Scrollable A4 Preview Stage */}
       <div className="flex-1 overflow-y-auto bg-slate-200/90 p-4 sm:p-8 print:bg-white print:p-0 print:overflow-visible">
-        <div className="print-sheet bg-white max-w-[210mm] min-h-[260mm] mx-auto shadow-lg border border-slate-300 p-6 sm:p-10 text-slate-900 space-y-6 print:shadow-none print:border-0 print:p-0 print:max-w-none print:min-h-0">
-          {/* Document Header */}
-          <div className="pb-4 border-b-2 border-slate-900 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                AçoGestão · Controle de Estoque Mensal
+        <div className="print-sheet bg-white max-w-[210mm] min-h-[265mm] mx-auto shadow-lg border border-slate-300 p-7 sm:p-10 text-slate-900 flex flex-col justify-between print:shadow-none print:border-0 print:p-0 print:max-w-none print:min-h-0">
+          <div className="space-y-5">
+            {/* Clean Executive Header */}
+            <header className="pb-3.5 border-b border-slate-900 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                  AçoGestão · Relatório de Estoque
+                </div>
+                <h1 className="font-display text-xl font-bold text-slate-900 mt-0.5">
+                  {formatMonthLabel(monthKey)} — {scopeTitle}
+                </h1>
               </div>
-              <h1 className="font-display text-2xl font-bold text-slate-900 mt-0.5">
-                {formatMonthLabel(monthKey)}
-              </h1>
-              <div className="text-xs text-slate-600 mt-1">
-                Escopo: <span className="font-medium text-slate-900">{scopeTitle}</span>
+              <div className="text-left sm:text-right text-[11px] text-slate-600 font-mono-num">
+                <div>
+                  Status: <span className="font-medium text-slate-900">{isLocked ? 'Fechado' : 'Em aberto'}</span>
+                </div>
+                <div>Emissão: {generatedAt}</div>
               </div>
-            </div>
-            <div className="text-left sm:text-right text-xs text-slate-600 font-mono-num space-y-0.5">
-              <div>Situação: {isLocked ? 'Mês fechado' : 'Em aberto'}</div>
-              <div>Emitido em: {generatedAt}</div>
-              <div>Total de lançamentos: {formatNumber(itemsToPrint.length)}</div>
-            </div>
-          </div>
+            </header>
 
-          {monthNotes.trim() && (
-            <div className="px-3.5 py-2.5 border border-slate-200 bg-slate-50 text-xs text-slate-700">
-              <span className="font-semibold text-slate-900">Observações do mês:</span>{' '}
-              {monthNotes}
-            </div>
-          )}
-
-          {/* Compact Totals Overview */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border border-slate-300 p-3 bg-slate-50/60">
-            <div>
-              <div className="text-[11px] text-slate-500">Estribos</div>
-              <div className="font-mono-num text-sm font-semibold text-slate-900">
-                {formatKg(totals.estriboKg)}
+            {monthNotes.trim() && (
+              <div className="px-3 py-2 border-l-2 border-slate-400 bg-slate-50 text-xs text-slate-700">
+                <span className="font-semibold text-slate-900">Obs.:</span> {monthNotes}
               </div>
-              <div className="font-mono-num text-[11px] text-slate-600">
-                {formatNumber(totals.estriboPecas)} pçs · {formatNumber(totals.estriboPacotes)} pcts
-              </div>
-            </div>
-            <div>
-              <div className="text-[11px] text-slate-500">Bobinas</div>
-              <div className="font-mono-num text-sm font-semibold text-slate-900">
-                {formatKg(totals.bobinaKg)}
-              </div>
-              <div className="font-mono-num text-[11px] text-slate-600">
-                {formatNumber(totals.bobinaUn)} un
-              </div>
-            </div>
-            <div>
-              <div className="text-[11px] text-slate-500">Barras</div>
-              <div className="font-mono-num text-sm font-semibold text-slate-900">
-                {formatKg(totals.barraKg > 0 ? totals.barraKg : totals.barraBalancaKg)}
-              </div>
-              <div className="font-mono-num text-[11px] text-slate-600">
-                {formatNumber(totals.barraQtd)} br · Bal. {formatKg(totals.barraBalancaKg)}
-              </div>
-            </div>
-            <div>
-              <div className="text-[11px] text-slate-500">Telas Pop &amp; Arames</div>
-              <div className="font-mono-num text-sm font-semibold text-slate-900">
-                {formatNumber(totals.telaUn)} telas · {formatKg(totals.arameKg)}
-              </div>
-              <div className="font-mono-num text-[11px] text-slate-600">
-                {totals.arameBoxUn > 0 ? formatArameBoxes(totals.arameBoxUn) : '0 cx'}
-                {totals.arameCoilUn > 0 ? ` · ${formatNumber(totals.arameCoilUn)} bob.` : ''}
-              </div>
-            </div>
-          </div>
-
-          {/* Estribo Summary by Bitola & Medida */}
-          {showEstriboSummary && estriboRows.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                Resumo de Estribos por Bitola e Medida
-              </h3>
-              <table className="w-full text-left border-collapse border border-slate-300 text-xs">
-                <thead>
-                  <tr className="bg-slate-100 border-b border-slate-300 text-slate-700">
-                    <th className="px-3 py-2 border-r border-slate-300">Bitola</th>
-                    <th className="px-3 py-2 border-r border-slate-300">Medida</th>
-                    <th className="px-3 py-2 text-right border-r border-slate-300">Qtd. Peças</th>
-                    <th className="px-3 py-2 text-right border-r border-slate-300">Qtd. Pacotes</th>
-                    <th className="px-3 py-2 text-right">Peso Total (Kg)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {estriboRows.map((row) => (
-                    <tr key={row.key} className="break-inside-avoid">
-                      <td className="px-3 py-1.5 font-mono-num font-medium border-r border-slate-200">
-                        {row.bitola}
-                      </td>
-                      <td className="px-3 py-1.5 font-mono-num border-r border-slate-200">
-                        {row.medida}
-                      </td>
-                      <td className="px-3 py-1.5 text-right font-mono-num border-r border-slate-200">
-                        {formatNumber(row.qtdPecas)}
-                      </td>
-                      <td className="px-3 py-1.5 text-right font-mono-num border-r border-slate-200">
-                        {formatNumber(row.qtdPacotes)}
-                      </td>
-                      <td className="px-3 py-1.5 text-right font-mono-num font-medium">
-                        {formatKg(row.kg)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Main Items Table */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-              {effectiveCategory === 'all'
-                ? 'Relação completa de materiais'
-                : `Relação de ${CATEGORY_MAP[effectiveCategory].label}`}
-            </h3>
+            )}
 
             {itemsToPrint.length === 0 ? (
-              <div className="p-6 border border-slate-200 text-center text-xs text-slate-500">
-                Nenhum item para exibir neste escopo.
+              <div className="py-12 border border-slate-200 text-center text-xs text-slate-500">
+                Nenhum material lançado neste escopo.
+              </div>
+            ) : detailLevel === 'simplificado' ? (
+              <div className="space-y-5">
+                {/* 1. Estribos */}
+                {consolidated.estribos.length > 0 && (
+                  <section className="space-y-1.5 break-inside-avoid">
+                    <div className="flex items-baseline justify-between border-b border-slate-300 pb-1">
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-800">
+                        Estribo
+                      </h2>
+                      <span className="text-[11px] font-mono-num text-slate-500">
+                        {consolidated.estribos.length}{' '}
+                        {consolidated.estribos.length === 1 ? 'medida' : 'medidas'}
+                      </span>
+                    </div>
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-300 text-[11px] text-slate-500">
+                          <th className="py-1.5 pr-3 font-medium">Bitola</th>
+                          <th className="py-1.5 px-3 font-medium">Medida</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Peças</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Pacotes</th>
+                          <th className="py-1.5 pl-3 text-right font-medium">Peso (Kg)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {consolidated.estribos.map((row) => (
+                          <tr key={row.key}>
+                            <td className="py-1.5 pr-3 font-mono-num font-medium text-slate-900">
+                              {row.bitola}
+                            </td>
+                            <td className="py-1.5 px-3 font-mono-num text-slate-800">
+                              {row.medida}
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-mono-num text-slate-700">
+                              {formatNumber(row.qtdPecas)}
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-mono-num text-slate-700">
+                              {formatNumber(row.qtdPacotes)}
+                            </td>
+                            <td className="py-1.5 pl-3 text-right font-mono-num font-medium text-slate-900">
+                              {formatKg(row.kg)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-slate-400 bg-slate-50/70 font-semibold text-slate-900">
+                          <td colSpan={2} className="py-1.5 pr-3">
+                            Subtotal Estribo
+                          </td>
+                          <td className="py-1.5 px-3 text-right font-mono-num">
+                            {formatNumber(consolidated.estriboTotalPecas)}
+                          </td>
+                          <td className="py-1.5 px-3 text-right font-mono-num">
+                            {formatNumber(consolidated.estriboTotalPacotes)}
+                          </td>
+                          <td className="py-1.5 pl-3 text-right font-mono-num">
+                            {formatKg(consolidated.estriboTotalKg)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </section>
+                )}
+
+                {/* 2. Bobinas */}
+                {consolidated.bobinas.length > 0 && (
+                  <section className="space-y-1.5 break-inside-avoid">
+                    <div className="flex items-baseline justify-between border-b border-slate-300 pb-1">
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-800">
+                        Bobinas
+                      </h2>
+                      <span className="text-[11px] font-mono-num text-slate-500">
+                        {formatNumber(consolidated.bobinaTotalUn)} un
+                      </span>
+                    </div>
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-300 text-[11px] text-slate-500">
+                          <th className="py-1.5 pr-3 font-medium">Bitola</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Quantidade</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Etiqueta (Kg)</th>
+                          <th className="py-1.5 pl-3 text-right font-medium">Balança (Kg)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {consolidated.bobinas.map((row) => (
+                          <tr key={row.key}>
+                            <td className="py-1.5 pr-3 font-mono-num font-medium text-slate-900">
+                              {row.bitola}
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-mono-num text-slate-700">
+                              {formatNumber(row.unidades)} un
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-mono-num font-medium text-slate-900">
+                              {row.etiquetaKg > 0 ? formatKg(row.etiquetaKg) : '—'}
+                            </td>
+                            <td className="py-1.5 pl-3 text-right font-mono-num text-slate-700">
+                              {row.scaleWeightKg > 0 ? formatKg(row.scaleWeightKg) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-slate-400 bg-slate-50/70 font-semibold text-slate-900">
+                          <td className="py-1.5 pr-3">Subtotal Bobinas</td>
+                          <td className="py-1.5 px-3 text-right font-mono-num">
+                            {formatNumber(consolidated.bobinaTotalUn)} un
+                          </td>
+                          <td className="py-1.5 px-3 text-right font-mono-num">
+                            {consolidated.bobinaTotalEtiquetaKg > 0
+                              ? formatKg(consolidated.bobinaTotalEtiquetaKg)
+                              : '—'}
+                          </td>
+                          <td className="py-1.5 pl-3 text-right font-mono-num">
+                            {consolidated.bobinaTotalBalancaKg > 0
+                              ? formatKg(consolidated.bobinaTotalBalancaKg)
+                              : '—'}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </section>
+                )}
+
+                {/* 3. Barras */}
+                {consolidated.barras.length > 0 && (
+                  <section className="space-y-1.5 break-inside-avoid">
+                    <div className="flex items-baseline justify-between border-b border-slate-300 pb-1">
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-800">
+                        Barras
+                      </h2>
+                      <span className="text-[11px] font-mono-num text-slate-500">
+                        {formatNumber(consolidated.barraTotalQtd)} barras
+                      </span>
+                    </div>
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-300 text-[11px] text-slate-500">
+                          <th className="py-1.5 pr-3 font-medium">Bitola</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Qtd. Barras</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Etiqueta (Kg)</th>
+                          <th className="py-1.5 pl-3 text-right font-medium">Balança (Kg)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {consolidated.barras.map((row) => (
+                          <tr key={row.key}>
+                            <td className="py-1.5 pr-3 font-mono-num font-medium text-slate-900">
+                              {row.bitola}
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-mono-num text-slate-700">
+                              {row.qtdBarras > 0 ? formatNumber(row.qtdBarras) : '—'}
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-mono-num font-medium text-slate-900">
+                              {row.kg > 0 ? formatKg(row.kg) : '—'}
+                            </td>
+                            <td className="py-1.5 pl-3 text-right font-mono-num text-slate-700">
+                              {row.scaleWeightKg > 0 ? formatKg(row.scaleWeightKg) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-slate-400 bg-slate-50/70 font-semibold text-slate-900">
+                          <td className="py-1.5 pr-3">Subtotal Barras</td>
+                          <td className="py-1.5 px-3 text-right font-mono-num">
+                            {consolidated.barraTotalQtd > 0
+                              ? formatNumber(consolidated.barraTotalQtd)
+                              : '—'}
+                          </td>
+                          <td className="py-1.5 px-3 text-right font-mono-num">
+                            {consolidated.barraTotalKg > 0
+                              ? formatKg(consolidated.barraTotalKg)
+                              : '—'}
+                          </td>
+                          <td className="py-1.5 pl-3 text-right font-mono-num">
+                            {consolidated.barraTotalBalanca > 0
+                              ? formatKg(consolidated.barraTotalBalanca)
+                              : '—'}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </section>
+                )}
+
+                {/* 4. Telas Pop */}
+                {consolidated.telas.length > 0 && (
+                  <section className="space-y-1.5 break-inside-avoid">
+                    <div className="flex items-baseline justify-between border-b border-slate-300 pb-1">
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-800">
+                        Telas Pop
+                      </h2>
+                      <span className="text-[11px] font-mono-num text-slate-500">
+                        {formatNumber(consolidated.telaTotalUn)} telas
+                      </span>
+                    </div>
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-300 text-[11px] text-slate-500">
+                          <th className="py-1.5 pr-3 font-medium">Código / Fio</th>
+                          <th className="py-1.5 px-3 font-medium">Especificação</th>
+                          <th className="py-1.5 pl-3 text-right font-medium">Quantidade</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {consolidated.telas.map((row) => (
+                          <tr key={row.key}>
+                            <td className="py-1.5 pr-3 font-mono-num font-medium text-slate-900">
+                              {row.code}
+                            </td>
+                            <td className="py-1.5 px-3 text-slate-700">{row.specText}</td>
+                            <td className="py-1.5 pl-3 text-right font-mono-num font-medium text-slate-900">
+                              {formatNumber(row.unidades)} un
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-slate-400 bg-slate-50/70 font-semibold text-slate-900">
+                          <td colSpan={2} className="py-1.5 pr-3">
+                            Subtotal Telas Pop
+                          </td>
+                          <td className="py-1.5 pl-3 text-right font-mono-num">
+                            {formatNumber(consolidated.telaTotalUn)} un
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </section>
+                )}
+
+                {/* 5. Arames */}
+                {consolidated.arames.length > 0 && (
+                  <section className="space-y-1.5 break-inside-avoid">
+                    <div className="flex items-baseline justify-between border-b border-slate-300 pb-1">
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-800">
+                        Arames
+                      </h2>
+                      <span className="text-[11px] font-mono-num text-slate-500">
+                        {formatKg(consolidated.arameTotalKg)}
+                      </span>
+                    </div>
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-300 text-[11px] text-slate-500">
+                          <th className="py-1.5 pr-3 font-medium">Tipo / Bitola</th>
+                          <th className="py-1.5 px-3 font-medium">Embalagem</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Quantidade</th>
+                          <th className="py-1.5 pl-3 text-right font-medium">Peso (Kg)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {consolidated.arames.map((row) => (
+                          <tr key={row.key}>
+                            <td className="py-1.5 pr-3 font-medium text-slate-900">
+                              {row.wireLabel} · <span className="font-mono-num">{row.bitola}</span>
+                            </td>
+                            <td className="py-1.5 px-3 font-mono-num text-slate-700">
+                              {row.isVariedCoil
+                                ? 'Bobina (Kg variado)'
+                                : formatArameBoxes(row.unidades)}
+                            </td>
+                            <td className="py-1.5 px-3 text-right font-mono-num text-slate-700">
+                              {formatNumber(row.unidades)}{' '}
+                              {row.isVariedCoil
+                                ? row.unidades === 1
+                                  ? 'bobina'
+                                  : 'bobinas'
+                                : 'un'}
+                            </td>
+                            <td className="py-1.5 pl-3 text-right font-mono-num font-medium text-slate-900">
+                              {formatKg(row.kg)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-slate-400 bg-slate-50/70 font-semibold text-slate-900">
+                          <td colSpan={3} className="py-1.5 pr-3">
+                            Subtotal Arames
+                          </td>
+                          <td className="py-1.5 pl-3 text-right font-mono-num">
+                            {formatKg(consolidated.arameTotalKg)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </section>
+                )}
+
+                {/* Separated Grand Totals */}
+                {(consolidated.totalSemBalancaKg > 0 || consolidated.totalBalancaKg > 0) && (
+                  <div className="pt-2.5 border-t-2 border-slate-900 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-900">
+                    <span className="uppercase tracking-wider">Totais Consolidados</span>
+                    <div className="flex flex-wrap items-center gap-5 font-mono-num">
+                      {consolidated.totalSemBalancaKg > 0 && (
+                        <span>
+                          Peso (Etiqueta / Lote):{' '}
+                          <span className="text-sm font-bold">
+                            {formatKg(consolidated.totalSemBalancaKg)}
+                          </span>
+                        </span>
+                      )}
+                      {consolidated.totalBalancaKg > 0 && (
+                        <span>
+                          Balança:{' '}
+                          <span className="text-sm font-bold">
+                            {formatKg(consolidated.totalBalancaKg)}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <table className="w-full text-left border-collapse border border-slate-300 text-xs">
-                <thead>
-                  <tr className="bg-slate-100 border-b border-slate-300 text-slate-700">
-                    <th className="px-2.5 py-2 border-r border-slate-300">Categoria</th>
-                    <th className="px-2.5 py-2 border-r border-slate-300">Bitola / Código</th>
-                    <th className="px-2.5 py-2 border-r border-slate-300">Quantidades</th>
-                    <th className="px-2.5 py-2 text-right border-r border-slate-300">Peso / Balança</th>
-                    <th className="px-2.5 py-2">Detalhes / Observações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {itemsToPrint.map((item) => {
-                    const catMeta = CATEGORY_MAP[item.category];
-                    let qtySummary = '—';
-                    let weightDisplay = item.kg > 0 ? formatKg(item.kg) : '—';
-                    let detailText = item.notes || '';
+              /* Detalhado View */
+              <div className="space-y-2">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                  Relação detalhada de lançamentos
+                </h2>
+                <table className="w-full text-left border-collapse border border-slate-300 text-xs">
+                  <thead>
+                    <tr className="bg-slate-100 border-b border-slate-300 text-slate-700">
+                      <th className="px-2.5 py-2 border-r border-slate-300">Categoria</th>
+                      <th className="px-2.5 py-2 border-r border-slate-300">Bitola / Código</th>
+                      <th className="px-2.5 py-2 border-r border-slate-300">Quantidades</th>
+                      <th className="px-2.5 py-2 text-right border-r border-slate-300">Peso / Balança</th>
+                      <th className="px-2.5 py-2">Detalhes / Observações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {itemsToPrint.map((item) => {
+                      const catMeta = CATEGORY_MAP[item.category];
+                      let qtySummary = '—';
+                      let weightDisplay = item.kg > 0 ? formatKg(item.kg) : '—';
+                      let detailText = item.notes || '';
 
-                    if (item.category === 'estribo') {
-                      qtySummary = `${formatNumber(item.qtdPecas)} pçs · ${formatNumber(item.qtdPacotes)} pcts`;
-                      if (item.medida) {
-                        const med = `Medida: ${item.medida}`;
-                        detailText = detailText ? `${med} · ${detailText}` : med;
-                      }
-                    } else if (item.category === 'bobina') {
-                      qtySummary = `${formatNumber(item.unidades)} un`;
-                    } else if (item.category === 'barra') {
-                      qtySummary =
-                        item.qtdBarras > 0 ? `${formatNumber(item.qtdBarras)} barras` : 'Por peso';
-                      if (item.hasScaleWeight) {
-                        weightDisplay =
-                          item.kg > 0
-                            ? `${formatKg(item.kg)} (Bal.: ${formatKg(item.scaleWeightKg)})`
-                            : `Bal.: ${formatKg(item.scaleWeightKg)}`;
-                      }
-                      const labelText = item.hasLabel
-                        ? `Etiqueta${item.labelCode ? `: ${item.labelCode}` : ''}`
-                        : 'Sem etiqueta';
-                      detailText = detailText ? `${labelText} · ${detailText}` : labelText;
-                    } else if (item.category === 'tela_pop') {
-                      qtySummary = `${formatNumber(item.unidades)} un`;
-                      weightDisplay = '—';
-                      const telaSpec = resolveTelaPopByCode(item.bitola);
-                      if (telaSpec) {
-                        const telaInfo = `${telaSpec.nome} · Malha ${telaSpec.malha}`;
-                        detailText = detailText ? `${telaInfo} · ${detailText}` : telaInfo;
-                      }
-                    } else if (item.category === 'arame') {
-                      const m = getArameMetrics(item.unidades, item.kg, item.measurementMode);
-                      weightDisplay = m.kg > 0 ? formatKg(m.kg) : '—';
-                      if (m.isVariedCoil) {
+                      if (item.category === 'estribo') {
+                        qtySummary = `${formatNumber(item.qtdPecas)} pçs · ${formatNumber(item.qtdPacotes)} pcts`;
+                        if (item.medida) {
+                          const med = `Medida: ${item.medida}`;
+                          detailText = detailText ? `${med} · ${detailText}` : med;
+                        }
+                      } else if (item.category === 'bobina') {
+                        qtySummary = `${formatNumber(item.unidades)} un`;
+                        const etiquetaKg =
+                          item.hasLabel || !item.hasScaleWeight ? item.kg : 0;
+                        const scaleKg = item.hasScaleWeight ? item.scaleWeightKg : 0;
+                        if (etiquetaKg > 0 && scaleKg > 0) {
+                          weightDisplay = `${formatKg(etiquetaKg)} (Bal.: ${formatKg(scaleKg)})`;
+                        } else if (scaleKg > 0) {
+                          weightDisplay = formatKg(scaleKg);
+                        } else {
+                          weightDisplay = etiquetaKg > 0 ? formatKg(etiquetaKg) : '—';
+                        }
+                        const sourceText =
+                          item.hasLabel && item.hasScaleWeight
+                            ? 'Etiqueta + Balança Kg'
+                            : item.hasScaleWeight
+                              ? 'Balança Kg'
+                              : item.hasLabel
+                                ? 'Etiqueta'
+                                : '';
+                        if (sourceText) {
+                          detailText = detailText ? `${sourceText} · ${detailText}` : sourceText;
+                        }
+                      } else if (item.category === 'barra') {
                         qtySummary =
-                          m.unidades > 0
-                            ? `${formatNumber(m.unidades)} ${m.unidades === 1 ? 'bobina' : 'bobinas'}`
-                            : 'Bobina';
-                        const wireInfo = `${item.wireType === 'liso' ? 'Liso' : 'Torcido'} · Bobina (Kg variado)`;
-                        detailText = detailText ? `${wireInfo} · ${detailText}` : wireInfo;
-                      } else {
-                        qtySummary =
-                          m.unidades > 0
-                            ? `${formatNumber(m.unidades)} un · ${formatArameBoxes(m.unidades)}`
-                            : '—';
-                        const wireInfo = item.wireType === 'liso' ? 'Arame Liso' : 'Arame Torcido';
-                        detailText = detailText ? `${wireInfo} · ${detailText}` : wireInfo;
+                          item.qtdBarras > 0 ? `${formatNumber(item.qtdBarras)} barras` : 'Por peso';
+                        const etiquetaKg =
+                          item.hasLabel || !item.hasScaleWeight ? item.kg : 0;
+                        const scaleKg = item.hasScaleWeight ? item.scaleWeightKg : 0;
+                        if (etiquetaKg > 0 && scaleKg > 0) {
+                          weightDisplay = `${formatKg(etiquetaKg)} (Bal.: ${formatKg(scaleKg)})`;
+                        } else if (scaleKg > 0) {
+                          weightDisplay = formatKg(scaleKg);
+                        } else {
+                          weightDisplay = etiquetaKg > 0 ? formatKg(etiquetaKg) : '—';
+                        }
+                        const barraParts: string[] = [];
+                        if (etiquetaKg > 0 && scaleKg > 0) {
+                          barraParts.push('Etiqueta + Balança Kg');
+                        } else if (scaleKg > 0) {
+                          barraParts.push('Balança Kg');
+                        } else if (item.hasLabel || etiquetaKg > 0) {
+                          barraParts.push('Etiqueta');
+                        }
+                        if (item.labelCode) {
+                          barraParts.push(`Cód.: ${item.labelCode}`);
+                        }
+                        const barraInfo = barraParts.join(' · ');
+                        if (barraInfo) {
+                          detailText = detailText ? `${barraInfo} · ${detailText}` : barraInfo;
+                        }
+                      } else if (item.category === 'tela_pop') {
+                        qtySummary = `${formatNumber(item.unidades)} un`;
+                        weightDisplay = '—';
+                        const telaSpec = resolveTelaPopByCode(item.bitola);
+                        if (telaSpec) {
+                          const telaInfo = `${telaSpec.nome} · Malha ${telaSpec.malha}`;
+                          detailText = detailText ? `${telaInfo} · ${detailText}` : telaInfo;
+                        }
+                      } else if (item.category === 'arame') {
+                        const m = getArameMetrics(item.unidades, item.kg, item.measurementMode);
+                        weightDisplay = m.kg > 0 ? formatKg(m.kg) : '—';
+                        if (m.isVariedCoil) {
+                          qtySummary =
+                            m.unidades > 0
+                              ? `${formatNumber(m.unidades)} ${m.unidades === 1 ? 'bobina' : 'bobinas'}`
+                              : 'Bobina';
+                          const wireInfo = `${item.wireType === 'liso' ? 'Liso' : 'Torcido'} · Bobina (Kg variado)`;
+                          detailText = detailText ? `${wireInfo} · ${detailText}` : wireInfo;
+                        } else {
+                          qtySummary =
+                            m.unidades > 0
+                              ? `${formatNumber(m.unidades)} un · ${formatArameBoxes(m.unidades)}`
+                              : '—';
+                          const wireInfo = item.wireType === 'liso' ? 'Arame Liso' : 'Arame Torcido';
+                          detailText = detailText ? `${wireInfo} · ${detailText}` : wireInfo;
+                        }
                       }
-                    }
 
-                    return (
-                      <tr key={item.id} className="break-inside-avoid">
-                        <td className="px-2.5 py-1.5 font-medium text-slate-900 border-r border-slate-200 whitespace-nowrap">
-                          {catMeta.label}
-                        </td>
-                        <td className="px-2.5 py-1.5 font-mono-num text-slate-800 border-r border-slate-200 whitespace-nowrap">
-                          {item.bitola}
-                        </td>
-                        <td className="px-2.5 py-1.5 font-mono-num text-slate-700 border-r border-slate-200 whitespace-nowrap">
-                          {qtySummary}
-                        </td>
-                        <td className="px-2.5 py-1.5 text-right font-mono-num font-medium text-slate-900 border-r border-slate-200 whitespace-nowrap">
-                          {weightDisplay}
-                        </td>
-                        <td className="px-2.5 py-1.5 text-slate-600">
-                          {detailText || '—'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                      if (item.notaFiscal?.trim()) {
+                        const nfText = `NF: ${item.notaFiscal.trim()}`;
+                        detailText = detailText ? `${nfText} · ${detailText}` : nfText;
+                      }
+
+                      return (
+                        <tr key={item.id} className="break-inside-avoid">
+                          <td className="px-2.5 py-1.5 font-medium text-slate-900 border-r border-slate-200 whitespace-nowrap">
+                            {catMeta.label}
+                          </td>
+                          <td className="px-2.5 py-1.5 font-mono-num text-slate-800 border-r border-slate-200 whitespace-nowrap">
+                            {item.bitola}
+                          </td>
+                          <td className="px-2.5 py-1.5 font-mono-num text-slate-700 border-r border-slate-200 whitespace-nowrap">
+                            {qtySummary}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-right font-mono-num font-medium text-slate-900 border-r border-slate-200 whitespace-nowrap">
+                            {weightDisplay}
+                          </td>
+                          <td className="px-2.5 py-1.5 text-slate-600">{detailText || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
-          {/* Printable Sign-off Footer */}
-          <div className="pt-8 mt-6 border-t border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs text-slate-600">
-            <div>
-              Conferido por: ________________________________________
-            </div>
-            <div>Data da conferência: ____ / ____ / ________</div>
-          </div>
+          {/* Minimal Sign-off Footer */}
+          <footer className="pt-8 mt-8 border-t border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-[11px] text-slate-600">
+            <div>Conferido por: _____________________________________</div>
+            <div>Data: ____ / ____ / ________</div>
+          </footer>
         </div>
       </div>
     </div>

@@ -29,6 +29,7 @@ export function exportMonthlyCsv(monthKey: string, items: InventoryItem[]): void
     'Código Etiqueta',
     'Pesado na Balança',
     'Peso Balança (Kg)',
+    'Nota Fiscal',
     'Observações',
   ];
 
@@ -56,16 +57,33 @@ export function exportMonthlyCsv(monthKey: string, items: InventoryItem[]): void
         : item.category === 'arame'
           ? getArameMetrics(item.unidades, item.kg, item.measurementMode).unidades
           : '',
-      item.category === 'barra' ? item.qtdBarras : '',
+      item.category === 'barra' && item.qtdBarras > 0 ? item.qtdBarras : '',
       item.category === 'arame'
         ? getArameMetrics(item.unidades, item.kg, item.measurementMode).kg
-        : item.category !== 'tela_pop'
-          ? item.kg
-          : '',
-      item.category === 'barra' ? (item.hasLabel ? 'Sim' : 'Não') : '',
+        : item.category === 'bobina' || item.category === 'barra'
+          ? item.hasLabel || !item.hasScaleWeight
+            ? item.kg > 0
+              ? item.kg
+              : ''
+            : ''
+          : item.category !== 'tela_pop'
+            ? item.kg
+            : '',
+      item.category === 'barra' || item.category === 'bobina'
+        ? item.hasLabel
+          ? 'Sim'
+          : 'Não'
+        : '',
       item.category === 'barra' && item.hasLabel ? item.labelCode : '',
-      item.category === 'barra' ? (item.hasScaleWeight ? 'Sim' : 'Não') : '',
-      item.category === 'barra' && item.hasScaleWeight ? item.scaleWeightKg : '',
+      item.category === 'barra' || item.category === 'bobina'
+        ? item.hasScaleWeight
+          ? 'Sim'
+          : 'Não'
+        : '',
+      (item.category === 'barra' || item.category === 'bobina') && item.hasScaleWeight
+        ? item.scaleWeightKg
+        : '',
+      item.notaFiscal ?? '',
       item.notes,
     ].map(escapeCsvCell);
   });

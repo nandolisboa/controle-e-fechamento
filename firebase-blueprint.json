@@ -137,6 +137,11 @@
           "enum": ["none", "liso", "torcido"],
           "description": "Wire type for Arames (Liso or Torcido)."
         },
+        "notaFiscal": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Optional invoice (Nota Fiscal) number for this stock item."
+        },
         "notes": {
           "type": "string",
           "maxLength": 300,

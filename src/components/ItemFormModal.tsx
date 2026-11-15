@@ -14,6 +14,7 @@ import {
   MAX_BITOLA_LENGTH,
   MAX_LABEL_LENGTH,
   MAX_MEDIDA_LENGTH,
+  MAX_NOTA_FISCAL_LENGTH,
   MAX_NOTES_LENGTH,
   type MaterialCategory,
   type MeasurementMode,
@@ -71,9 +72,14 @@ function createEmptyEstriboRow(defaults?: {
   };
 }
 
+type BobinaWeightSource = 'etiqueta' | 'balanca' | 'ambos';
+type BarraWeightSource = 'etiqueta' | 'balanca' | 'ambos' | 'none';
+
 interface BobinaRowDraft {
   id: string;
+  source: BobinaWeightSource;
   kg: string;
+  scaleWeightKg: string;
 }
 
 const BOBINA_BITOLA_KEY = 'acogestao_bobina_bitola_v1';
@@ -98,10 +104,12 @@ function saveBobinaBitolaDefault(bitola: string): void {
   }
 }
 
-function createEmptyBobinaRow(): BobinaRowDraft {
+function createEmptyBobinaRow(source: BobinaWeightSource = 'etiqueta'): BobinaRowDraft {
   return {
     id: `bobina_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    source,
     kg: '',
+    scaleWeightKg: '',
   };
 }
 
@@ -138,13 +146,14 @@ export function ItemFormModal({
   const [qtdBarras, setQtdBarras] = useState('');
   const [kg, setKg] = useState('');
   const [measurementMode, setMeasurementMode] = useState<MeasurementMode>('ambos');
-  const [hasLabel, setHasLabel] = useState(false);
   const [labelCode, setLabelCode] = useState('');
-  const [hasScaleWeight, setHasScaleWeight] = useState(false);
   const [scaleWeightKg, setScaleWeightKg] = useState('');
   const [wireType, setWireType] = useState<WireType>('liso');
+  const [bobinaSource, setBobinaSource] = useState<BobinaWeightSource>('etiqueta');
+  const [barraSource, setBarraSource] = useState<BarraWeightSource>('etiqueta');
   const [arameCaixas, setArameCaixas] = useState('');
   const [arameAvulsas, setArameAvulsas] = useState('');
+  const [notaFiscal, setNotaFiscal] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -172,10 +181,59 @@ export function ItemFormModal({
       setQtdBarras(editingItem.qtdBarras > 0 ? String(editingItem.qtdBarras) : '');
       setKg(editingItem.kg > 0 ? String(editingItem.kg) : '');
       setMeasurementMode(editingItem.measurementMode);
-      setHasLabel(editingItem.hasLabel);
       setLabelCode(editingItem.labelCode);
-      setHasScaleWeight(editingItem.hasScaleWeight);
       setScaleWeightKg(editingItem.scaleWeightKg > 0 ? String(editingItem.scaleWeightKg) : '');
+      if (editingItem.category === 'bobina') {
+        const nextSource: BobinaWeightSource =
+          editingItem.hasLabel && editingItem.hasScaleWeight
+            ? 'ambos'
+            : editingItem.hasScaleWeight
+              ? 'balanca'
+              : 'etiqueta';
+        setBobinaSource(nextSource);
+        setBarraSource('etiqueta');
+        setKg(
+          nextSource === 'balanca'
+            ? ''
+            : editingItem.kg > 0
+              ? String(editingItem.kg)
+              : ''
+        );
+        setScaleWeightKg(
+          editingItem.scaleWeightKg > 0
+            ? String(editingItem.scaleWeightKg)
+            : nextSource === 'balanca' && editingItem.kg > 0
+              ? String(editingItem.kg)
+              : ''
+        );
+      } else if (editingItem.category === 'barra') {
+        const hasEtiquetaWeight = editingItem.hasLabel || editingItem.kg > 0;
+        const nextBarraSource: BarraWeightSource =
+          hasEtiquetaWeight && editingItem.hasScaleWeight
+            ? 'ambos'
+            : editingItem.hasScaleWeight
+              ? 'balanca'
+              : hasEtiquetaWeight
+                ? 'etiqueta'
+                : 'none';
+        setBarraSource(nextBarraSource);
+        setBobinaSource('etiqueta');
+        setKg(
+          nextBarraSource === 'balanca' || nextBarraSource === 'none'
+            ? ''
+            : editingItem.kg > 0
+              ? String(editingItem.kg)
+              : ''
+        );
+        setScaleWeightKg(
+          editingItem.scaleWeightKg > 0
+            ? String(editingItem.scaleWeightKg)
+            : ''
+        );
+      } else {
+        setBobinaSource('etiqueta');
+        setBarraSource('etiqueta');
+      }
       setWireType(editingItem.wireType === 'none' ? 'liso' : editingItem.wireType);
       if (editingItem.category === 'arame') {
         const metrics = getArameMetrics(
@@ -200,6 +258,7 @@ export function ItemFormModal({
         setArameCaixas('');
         setArameAvulsas('');
       }
+      setNotaFiscal(editingItem.notaFiscal ?? '');
       setNotes(editingItem.notes);
       setEstriboRows([createEmptyEstriboRow()]);
       setBobinaRows([createEmptyBobinaRow()]);
@@ -212,18 +271,15 @@ export function ItemFormModal({
       setUnidades('');
       setQtdBarras('');
       setKg('');
-      setMeasurementMode(
-        defaultCategory === 'barra'
-          ? 'barras'
-          : 'ambos'
-      );
-      setHasLabel(false);
+      setMeasurementMode('ambos');
       setLabelCode('');
-      setHasScaleWeight(false);
       setScaleWeightKg('');
+      setBobinaSource('etiqueta');
+      setBarraSource('etiqueta');
       setWireType('liso');
       setArameCaixas('');
       setArameAvulsas('');
+      setNotaFiscal('');
       setNotes('');
       setEstriboRows([createEmptyEstriboRow()]);
       setBobinaRows([createEmptyBobinaRow()]);
@@ -248,7 +304,8 @@ export function ItemFormModal({
       setBitola('');
     }
     if (nextCat === 'barra') {
-      setMeasurementMode('barras');
+      setBarraSource('etiqueta');
+      setMeasurementMode('ambos');
     } else if (nextCat === 'arame') {
       setMeasurementMode('ambos');
       if (wireType === 'none') setWireType('liso');
@@ -276,7 +333,10 @@ export function ItemFormModal({
     const parsedBarras = category === 'barra' ? parseNumericInput(qtdBarras) : 0;
     const parsedKg = category !== 'tela_pop' ? parseNumericInput(kg) : 0;
     const parsedScaleKg =
-      category === 'barra' && hasScaleWeight ? parseNumericInput(scaleWeightKg) : 0;
+      (category === 'barra' && (barraSource === 'balanca' || barraSource === 'ambos')) ||
+      (category === 'bobina' && (bobinaSource === 'balanca' || bobinaSource === 'ambos'))
+        ? parseNumericInput(scaleWeightKg)
+        : 0;
 
     if (category === 'estribo') {
       if (!medida.trim()) {
@@ -302,27 +362,27 @@ export function ItemFormModal({
         setErrorMsg('Informe a quantidade de unidades da bobina.');
         return null;
       }
-      if (parsedKg <= 0) {
-        setErrorMsg('Informe o peso (Kg) da bobina.');
+      if ((bobinaSource === 'etiqueta' || bobinaSource === 'ambos') && parsedKg <= 0) {
+        setErrorMsg('Informe o peso da etiqueta (Kg) da bobina.');
+        return null;
+      }
+      if ((bobinaSource === 'balanca' || bobinaSource === 'ambos') && parsedScaleKg <= 0) {
+        setErrorMsg('Informe o peso da balança (Kg) da bobina.');
         return null;
       }
     }
 
     if (category === 'barra') {
-      if ((measurementMode === 'barras' || measurementMode === 'ambos') && parsedBarras <= 0) {
-        setErrorMsg('Informe a Qtd. Barras.');
+      if (barraSource === 'none' && parsedBarras <= 0) {
+        setErrorMsg('Informe a Qtd. Barras ou escolha um peso (Etiqueta / Balança).');
         return null;
       }
-      if ((measurementMode === 'kg' || measurementMode === 'ambos') && parsedKg <= 0) {
-        setErrorMsg('Informe o peso (Kg) das barras.');
+      if ((barraSource === 'etiqueta' || barraSource === 'ambos') && parsedKg <= 0) {
+        setErrorMsg('Informe o peso da etiqueta (Kg) das barras.');
         return null;
       }
-      if (hasLabel && !labelCode.trim()) {
-        setErrorMsg('Informe o número ou código da etiqueta.');
-        return null;
-      }
-      if (hasScaleWeight && parsedScaleKg <= 0) {
-        setErrorMsg('Informe o peso da balança em Kg.');
+      if ((barraSource === 'balanca' || barraSource === 'ambos') && parsedScaleKg <= 0) {
+        setErrorMsg('Informe o peso da balança (Kg) das barras.');
         return null;
       }
     }
@@ -368,50 +428,80 @@ export function ItemFormModal({
             ? parsedUnidades
             : arameTotalUnits
           : parsedUnidades,
-      qtdBarras:
-        category === 'barra' && measurementMode === 'kg' ? 0 : parsedBarras,
+      qtdBarras: parsedBarras,
       kg:
         category === 'arame'
           ? isArameVariedCoil
             ? parsedKg
             : arameTotalUnits * ARAME_KG_PER_UNIT
-          : category === 'barra' && measurementMode === 'barras'
+          : category === 'barra' && (barraSource === 'balanca' || barraSource === 'none')
             ? 0
-            : parsedKg,
-      measurementMode: category === 'arame' ? (isArameVariedCoil ? 'kg' : 'ambos') : measurementMode,
-      hasLabel: category === 'barra' ? hasLabel : false,
-      labelCode: category === 'barra' && hasLabel ? labelCode.trim().slice(0, MAX_LABEL_LENGTH) : '',
-      hasScaleWeight: category === 'barra' ? hasScaleWeight : false,
+            : category === 'bobina' && bobinaSource === 'balanca'
+              ? 0
+              : parsedKg,
+      measurementMode:
+        category === 'arame'
+          ? isArameVariedCoil
+            ? 'kg'
+            : 'ambos'
+          : category === 'barra'
+            ? parsedBarras > 0 && barraSource !== 'none'
+              ? 'ambos'
+              : parsedBarras > 0
+                ? 'barras'
+                : 'kg'
+            : measurementMode,
+      hasLabel:
+        category === 'barra'
+          ? barraSource === 'etiqueta' || barraSource === 'ambos'
+          : category === 'bobina'
+            ? bobinaSource === 'etiqueta' || bobinaSource === 'ambos'
+            : false,
+      labelCode:
+        category === 'barra' && (barraSource === 'etiqueta' || barraSource === 'ambos')
+          ? labelCode.trim().slice(0, MAX_LABEL_LENGTH)
+          : '',
+      hasScaleWeight:
+        category === 'barra'
+          ? barraSource === 'balanca' || barraSource === 'ambos'
+          : category === 'bobina'
+            ? bobinaSource === 'balanca' || bobinaSource === 'ambos'
+            : false,
       scaleWeightKg: parsedScaleKg,
       wireType: category === 'arame' ? (wireType === 'none' ? 'liso' : wireType) : 'none',
+      notaFiscal: notaFiscal.trim().slice(0, MAX_NOTA_FISCAL_LENGTH),
       notes: notes.trim().slice(0, MAX_NOTES_LENGTH),
     };
   }
 
   function formatAddedSummary(payload: InventoryItemInput): string {
     const label = CATEGORY_MAP[payload.category].label;
+    const nfSuffix = payload.notaFiscal ? ` · NF ${payload.notaFiscal}` : '';
     if (payload.category === 'estribo') {
       const parts = [label, payload.bitola];
       if (payload.medida) parts.push(payload.medida);
       parts.push(`${formatNumber(payload.qtdPecas)} pçs`, `${formatNumber(payload.qtdPacotes)} pcts`, formatKg(payload.kg));
-      return parts.join(' · ');
+      return `${parts.join(' · ')}${nfSuffix}`;
     }
     if (payload.category === 'bobina') {
-      return `${label} · ${payload.bitola} · ${formatNumber(payload.unidades)} un · ${formatKg(payload.kg)}`;
+      const parts = [label, payload.bitola, `${formatNumber(payload.unidades)} un`];
+      if (payload.hasLabel && payload.kg > 0) parts.push(`Etiqueta ${formatKg(payload.kg)}`);
+      if (payload.hasScaleWeight && payload.scaleWeightKg > 0) parts.push(`Balança ${formatKg(payload.scaleWeightKg)}`);
+      return `${parts.join(' · ')}${nfSuffix}`;
     }
     if (payload.category === 'barra') {
       const parts = [label, payload.bitola];
       if (payload.qtdBarras > 0) parts.push(`${formatNumber(payload.qtdBarras)} barras`);
-      if (payload.kg > 0) parts.push(formatKg(payload.kg));
-      if (payload.hasScaleWeight) parts.push(`Balança ${formatKg(payload.scaleWeightKg)}`);
-      return parts.join(' · ');
+      if (payload.hasLabel && payload.kg > 0) parts.push(`Etiqueta ${formatKg(payload.kg)}`);
+      if (payload.hasScaleWeight && payload.scaleWeightKg > 0) parts.push(`Balança ${formatKg(payload.scaleWeightKg)}`);
+      return `${parts.join(' · ')}${nfSuffix}`;
     }
     if (payload.category === 'tela_pop') {
       const resolvedTela = resolveTelaPopByCode(payload.bitola);
       const telaLabel = resolvedTela
         ? `${resolvedTela.code} · ${resolvedTela.nome}`
         : payload.bitola;
-      return `${label} · ${telaLabel} · ${formatNumber(payload.unidades)} un`;
+      return `${label} · ${telaLabel} · ${formatNumber(payload.unidades)} un${nfSuffix}`;
     }
     const wire = payload.wireType === 'liso' ? 'Liso' : 'Torcido';
     const arameParts =
@@ -429,7 +519,7 @@ export function ItemFormModal({
             `${formatNumber(payload.unidades)} un`,
             formatKg(payload.kg),
           ];
-    return arameParts.join(' · ');
+    return `${arameParts.join(' · ')}${nfSuffix}`;
   }
 
   function resetFieldsForNextEntry() {
@@ -441,10 +531,9 @@ export function ItemFormModal({
     setKg('');
     setArameCaixas('');
     setArameAvulsas('');
-    setHasLabel(false);
     setLabelCode('');
-    setHasScaleWeight(false);
     setScaleWeightKg('');
+    setNotaFiscal('');
     setNotes('');
   }
 
@@ -513,7 +602,8 @@ export function ItemFormModal({
 
   function handleAddBobinaRow() {
     setErrorMsg(null);
-    setBobinaRows((prev) => [...prev, createEmptyBobinaRow()]);
+    const lastSource = bobinaRows[bobinaRows.length - 1]?.source ?? 'etiqueta';
+    setBobinaRows((prev) => [...prev, createEmptyBobinaRow(lastSource)]);
     window.requestAnimationFrame(() => {
       if (bobinaListRef.current) {
         bobinaListRef.current.scrollTop = bobinaListRef.current.scrollHeight;
@@ -521,9 +611,24 @@ export function ItemFormModal({
     });
   }
 
-  function handleUpdateBobinaRow(rowId: string, value: string) {
+  function handleUpdateBobinaRow(
+    rowId: string,
+    field: 'kg' | 'scaleWeightKg' | 'source',
+    value: string
+  ) {
     setBobinaRows((prev) =>
-      prev.map((row) => (row.id === rowId ? { ...row, kg: value } : row))
+      prev.map((row) =>
+        row.id === rowId
+          ? {
+              ...row,
+              ...(field === 'source'
+                ? { source: value as BobinaWeightSource }
+                : field === 'scaleWeightKg'
+                  ? { scaleWeightKg: value }
+                  : { kg: value }),
+            }
+          : row
+      )
     );
   }
 
@@ -589,9 +694,19 @@ export function ItemFormModal({
 
       const payloads: InventoryItemInput[] = [];
       for (let i = 0; i < bobinaRows.length; i += 1) {
-        const rowKg = parseNumericInput(bobinaRows[i].kg);
-        if (rowKg <= 0) {
-          setErrorMsg(`Informe o peso (Kg) da bobina #${i + 1}.`);
+        const row = bobinaRows[i];
+        const rowEtiquetaKg =
+          row.source === 'etiqueta' || row.source === 'ambos' ? parseNumericInput(row.kg) : 0;
+        const rowScaleKg =
+          row.source === 'balanca' || row.source === 'ambos'
+            ? parseNumericInput(row.scaleWeightKg)
+            : 0;
+        if ((row.source === 'etiqueta' || row.source === 'ambos') && rowEtiquetaKg <= 0) {
+          setErrorMsg(`Informe o peso da etiqueta (Kg) da bobina #${i + 1}.`);
+          return;
+        }
+        if ((row.source === 'balanca' || row.source === 'ambos') && rowScaleKg <= 0) {
+          setErrorMsg(`Informe o peso da balança (Kg) da bobina #${i + 1}.`);
           return;
         }
         payloads.push({
@@ -602,13 +717,14 @@ export function ItemFormModal({
           qtdPacotes: 0,
           unidades: 1,
           qtdBarras: 0,
-          kg: rowKg,
+          kg: rowEtiquetaKg,
           measurementMode: 'ambos',
-          hasLabel: false,
+          hasLabel: row.source === 'etiqueta' || row.source === 'ambos',
           labelCode: '',
-          hasScaleWeight: false,
-          scaleWeightKg: 0,
+          hasScaleWeight: row.source === 'balanca' || row.source === 'ambos',
+          scaleWeightKg: rowScaleKg,
           wireType: 'none',
+          notaFiscal: notaFiscal.trim().slice(0, MAX_NOTA_FISCAL_LENGTH),
           notes: notes.trim().slice(0, MAX_NOTES_LENGTH),
         });
       }
@@ -679,6 +795,7 @@ export function ItemFormModal({
           hasScaleWeight: false,
           scaleWeightKg: 0,
           wireType: 'none',
+          notaFiscal: notaFiscal.trim().slice(0, MAX_NOTA_FISCAL_LENGTH),
           notes: notes.trim().slice(0, MAX_NOTES_LENGTH),
         });
       }
@@ -1119,8 +1236,17 @@ export function ItemFormModal({
           )}
 
           {category === 'bobina' && !editingItem && (() => {
-            const totalBobinaKgPreview = bobinaRows.reduce(
-              (acc, r) => acc + parseNumericInput(r.kg),
+            const totalBobinaEtiquetaPreview = bobinaRows.reduce(
+              (acc, r) =>
+                acc + (r.source === 'etiqueta' || r.source === 'ambos' ? parseNumericInput(r.kg) : 0),
+              0
+            );
+            const totalBobinaBalancaPreview = bobinaRows.reduce(
+              (acc, r) =>
+                acc +
+                (r.source === 'balanca' || r.source === 'ambos'
+                  ? parseNumericInput(r.scaleWeightKg)
+                  : 0),
               0
             );
 
@@ -1131,9 +1257,15 @@ export function ItemFormModal({
                     <span className="text-xs font-medium text-slate-700">
                       Bobinas por unidade ({bobinaRows.length})
                     </span>
-                    {totalBobinaKgPreview > 0 && (
+                    {(totalBobinaEtiquetaPreview > 0 || totalBobinaBalancaPreview > 0) && (
                       <span className="ml-2 text-xs text-slate-500 font-mono-num">
-                        {formatNumber(bobinaRows.length)} un · {formatKg(totalBobinaKgPreview)}
+                        {formatNumber(bobinaRows.length)} un
+                        {totalBobinaEtiquetaPreview > 0
+                          ? ` · Etiq. ${formatKg(totalBobinaEtiquetaPreview)}`
+                          : ''}
+                        {totalBobinaBalancaPreview > 0
+                          ? ` · Bal. ${formatKg(totalBobinaBalancaPreview)}`
+                          : ''}
                       </span>
                     )}
                   </div>
@@ -1143,39 +1275,112 @@ export function ItemFormModal({
                   {bobinaRows.map((row, index) => (
                     <div
                       key={row.id}
-                      className="p-3 rounded-lg border border-slate-200 bg-slate-50/70 flex items-end gap-3"
+                      className="p-3 rounded-lg border border-slate-200 bg-slate-50/70 space-y-2.5"
                     >
-                      <div className="pb-2 text-xs font-medium text-slate-600 font-mono-num whitespace-nowrap">
-                        #{index + 1} · 1 un
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="text-xs font-medium text-slate-700 font-mono-num whitespace-nowrap">
+                          #{index + 1} · 1 un
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <div className="inline-flex items-center gap-1 p-0.5 bg-slate-200/80 rounded-lg">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateBobinaRow(row.id, 'source', 'etiqueta')}
+                              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                                row.source === 'etiqueta'
+                                  ? 'bg-white text-slate-900 shadow-sm'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              Etiqueta
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateBobinaRow(row.id, 'source', 'balanca')}
+                              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                                row.source === 'balanca'
+                                  ? 'bg-white text-slate-900 shadow-sm'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              Balança Kg
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateBobinaRow(row.id, 'source', 'ambos')}
+                              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                                row.source === 'ambos'
+                                  ? 'bg-white text-slate-900 shadow-sm'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              Ambos
+                            </button>
+                          </div>
+
+                          {bobinaRows.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveBobinaRow(row.id)}
+                              aria-label={`Remover bobina ${index + 1}`}
+                              className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <label
-                          htmlFor={`bobina-kg-${row.id}`}
-                          className="block text-[11px] font-medium text-slate-600 mb-1"
-                        >
-                          Peso (Kg) *
-                        </label>
-                        <input
-                          id={`bobina-kg-${row.id}`}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={row.kg}
-                          onChange={(e) => handleUpdateBobinaRow(row.id, e.target.value)}
-                          placeholder="0.00"
-                          className="w-full h-9 px-2.5 rounded-lg border border-slate-300 bg-white text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
-                        />
+
+                      <div
+                        className={`grid gap-2.5 ${
+                          row.source === 'ambos' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'
+                        }`}
+                      >
+                        {(row.source === 'etiqueta' || row.source === 'ambos') && (
+                          <div>
+                            <label
+                              htmlFor={`bobina-kg-${row.id}`}
+                              className="block text-[11px] font-medium text-slate-600 mb-1"
+                            >
+                              Peso Etiqueta (Kg) *
+                            </label>
+                            <input
+                              id={`bobina-kg-${row.id}`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={row.kg}
+                              onChange={(e) => handleUpdateBobinaRow(row.id, 'kg', e.target.value)}
+                              placeholder="0.00"
+                              className="w-full h-9 px-2.5 rounded-lg border border-slate-300 bg-white text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
+                            />
+                          </div>
+                        )}
+
+                        {(row.source === 'balanca' || row.source === 'ambos') && (
+                          <div>
+                            <label
+                              htmlFor={`bobina-balanca-${row.id}`}
+                              className="block text-[11px] font-medium text-slate-600 mb-1"
+                            >
+                              Peso Balança (Kg) *
+                            </label>
+                            <input
+                              id={`bobina-balanca-${row.id}`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={row.scaleWeightKg}
+                              onChange={(e) =>
+                                handleUpdateBobinaRow(row.id, 'scaleWeightKg', e.target.value)
+                              }
+                              placeholder="0.00"
+                              className="w-full h-9 px-2.5 rounded-lg border border-slate-300 bg-white text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
+                            />
+                          </div>
+                        )}
                       </div>
-                      {bobinaRows.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveBobinaRow(row.id)}
-                          aria-label={`Remover bobina ${index + 1}`}
-                          className="mb-1 p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -1196,74 +1401,39 @@ export function ItemFormModal({
           })()}
 
           {category === 'bobina' && editingItem && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="field-unid-bobina" className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Unidade (qtd.) *
-                </label>
-                <input
-                  id="field-unid-bobina"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={unidades}
-                  onChange={(e) => setUnidades(e.target.value)}
-                  placeholder="0"
-                  className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
-                />
-              </div>
-              <div>
-                <label htmlFor="field-kg-bobina" className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Peso (Kg) *
-                </label>
-                <input
-                  id="field-kg-bobina"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={kg}
-                  onChange={(e) => setKg(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
-                />
-              </div>
-            </div>
-          )}
-
-          {category === 'barra' && (
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Forma de medição principal
+                  Origem do peso
                 </label>
                 <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 rounded-lg">
                   <button
                     type="button"
-                    onClick={() => setMeasurementMode('barras')}
-                    className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors cursor-pointer ${
-                      measurementMode === 'barras'
+                    onClick={() => setBobinaSource('etiqueta')}
+                    className={`py-2 px-3 text-xs font-medium rounded-md transition-colors cursor-pointer ${
+                      bobinaSource === 'etiqueta'
                         ? 'bg-white text-slate-900 shadow-sm'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Qtd. Barras
+                    Etiqueta
                   </button>
                   <button
                     type="button"
-                    onClick={() => setMeasurementMode('kg')}
-                    className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors cursor-pointer ${
-                      measurementMode === 'kg'
+                    onClick={() => setBobinaSource('balanca')}
+                    className={`py-2 px-3 text-xs font-medium rounded-md transition-colors cursor-pointer ${
+                      bobinaSource === 'balanca'
                         ? 'bg-white text-slate-900 shadow-sm'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Kg
+                    Balança Kg
                   </button>
                   <button
                     type="button"
-                    onClick={() => setMeasurementMode('ambos')}
-                    className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors cursor-pointer ${
-                      measurementMode === 'ambos'
+                    onClick={() => setBobinaSource('ambos')}
+                    className={`py-2 px-3 text-xs font-medium rounded-md transition-colors cursor-pointer ${
+                      bobinaSource === 'ambos'
                         ? 'bg-white text-slate-900 shadow-sm'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
@@ -1273,29 +1443,147 @@ export function ItemFormModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {(measurementMode === 'barras' || measurementMode === 'ambos') && (
+              <div
+                className={`grid grid-cols-1 gap-4 ${
+                  bobinaSource === 'ambos' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+                }`}
+              >
+                <div>
+                  <label htmlFor="field-unid-bobina" className="block text-xs font-medium text-slate-700 mb-1.5">
+                    Unidade (qtd.) *
+                  </label>
+                  <input
+                    id="field-unid-bobina"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={unidades}
+                    onChange={(e) => setUnidades(e.target.value)}
+                    placeholder="0"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
+                  />
+                </div>
+                {(bobinaSource === 'etiqueta' || bobinaSource === 'ambos') && (
                   <div>
-                    <label htmlFor="field-barras" className="block text-xs font-medium text-slate-700 mb-1.5">
-                      Qtd. Barras *
+                    <label htmlFor="field-kg-bobina" className="block text-xs font-medium text-slate-700 mb-1.5">
+                      Peso Etiqueta (Kg) *
                     </label>
                     <input
-                      id="field-barras"
+                      id="field-kg-bobina"
                       type="number"
                       min="0"
-                      step="1"
-                      value={qtdBarras}
-                      onChange={(e) => setQtdBarras(e.target.value)}
-                      placeholder="0"
+                      step="0.01"
+                      value={kg}
+                      onChange={(e) => setKg(e.target.value)}
+                      placeholder="0.00"
                       className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
                     />
                   </div>
                 )}
+                {(bobinaSource === 'balanca' || bobinaSource === 'ambos') && (
+                  <div>
+                    <label htmlFor="field-balanca-bobina" className="block text-xs font-medium text-slate-700 mb-1.5">
+                      Peso Balança (Kg) *
+                    </label>
+                    <input
+                      id="field-balanca-bobina"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={scaleWeightKg}
+                      onChange={(e) => setScaleWeightKg(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-                {(measurementMode === 'kg' || measurementMode === 'ambos') && (
+          {category === 'barra' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Origem do peso (opcional: 1 das 2 ou as 2)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setBarraSource('etiqueta')}
+                    className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                      barraSource === 'etiqueta'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Etiqueta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBarraSource('balanca')}
+                    className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                      barraSource === 'balanca'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Balança Kg
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBarraSource('ambos')}
+                    className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                      barraSource === 'ambos'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    As 2
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBarraSource('none')}
+                    className={`py-1.5 px-2 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                      barraSource === 'none'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Só Qtd. Barras
+                  </button>
+                </div>
+              </div>
+
+              <div
+                className={`grid grid-cols-1 gap-4 ${
+                  barraSource === 'ambos'
+                    ? 'sm:grid-cols-3'
+                    : barraSource === 'none'
+                      ? ''
+                      : 'sm:grid-cols-2'
+                }`}
+              >
+                <div>
+                  <label htmlFor="field-barras" className="block text-xs font-medium text-slate-700 mb-1.5">
+                    {barraSource === 'none' ? 'Qtd. Barras *' : 'Qtd. Barras (opcional)'}
+                  </label>
+                  <input
+                    id="field-barras"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={qtdBarras}
+                    onChange={(e) => setQtdBarras(e.target.value)}
+                    placeholder="0"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
+                  />
+                </div>
+
+                {(barraSource === 'etiqueta' || barraSource === 'ambos') && (
                   <div>
                     <label htmlFor="field-kg-barra" className="block text-xs font-medium text-slate-700 mb-1.5">
-                      Peso (Kg) *
+                      Peso Etiqueta (Kg) *
                     </label>
                     <input
                       id="field-kg-barra"
@@ -1309,54 +1597,42 @@ export function ItemFormModal({
                     />
                   </div>
                 )}
-              </div>
 
-              <div className="pt-3 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2.5 text-sm font-medium text-slate-800 cursor-pointer">
+                {(barraSource === 'balanca' || barraSource === 'ambos') && (
+                  <div>
+                    <label htmlFor="field-balanca-barra" className="block text-xs font-medium text-slate-700 mb-1.5">
+                      Peso Balança (Kg) *
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={hasLabel}
-                      onChange={(e) => setHasLabel(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-orange-600 focus:ring-orange-600"
-                    />
-                    <span>Possui etiqueta</span>
-                  </label>
-                  {hasLabel && (
-                    <input
-                      type="text"
-                      maxLength={MAX_LABEL_LENGTH}
-                      value={labelCode}
-                      onChange={(e) => setLabelCode(e.target.value)}
-                      placeholder="Nº / Código da etiqueta (opcional)"
-                      className="w-full h-9 px-3 rounded-lg border border-slate-300 text-xs font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
-                    />
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2.5 text-sm font-medium text-slate-800 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={hasScaleWeight}
-                      onChange={(e) => setHasScaleWeight(e.target.checked)}
-                      className="w-4 h-4 rounded border-slate-300 text-orange-600 focus:ring-orange-600"
-                    />
-                    <span>Pesado na balança</span>
-                  </label>
-                  {hasScaleWeight && (
-                    <input
+                      id="field-balanca-barra"
                       type="number"
                       min="0"
                       step="0.01"
                       value={scaleWeightKg}
                       onChange={(e) => setScaleWeightKg(e.target.value)}
-                      placeholder="Peso da balança (Kg)"
-                      className="w-full h-9 px-3 rounded-lg border border-slate-300 text-xs font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
+                      placeholder="0.00"
+                      className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
                     />
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
+
+              {(barraSource === 'etiqueta' || barraSource === 'ambos') && (
+                <div>
+                  <label htmlFor="field-label-code-barra" className="block text-xs font-medium text-slate-700 mb-1.5">
+                    Código / Nº da etiqueta (opcional)
+                  </label>
+                  <input
+                    id="field-label-code-barra"
+                    type="text"
+                    maxLength={MAX_LABEL_LENGTH}
+                    value={labelCode}
+                    onChange={(e) => setLabelCode(e.target.value)}
+                    placeholder="Ex: Lote 123 ou código da etiqueta"
+                    className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -1571,19 +1847,36 @@ export function ItemFormModal({
             </div>
           )}
 
-          <div>
-            <label htmlFor="field-notes" className="block text-xs font-medium text-slate-700 mb-1.5">
-              Observações (opcional)
-            </label>
-            <input
-              id="field-notes"
-              type="text"
-              maxLength={MAX_NOTES_LENGTH}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Lote, local no pátio ou observação da contagem"
-              className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="field-nota-fiscal" className="block text-xs font-medium text-slate-700 mb-1.5">
+                Nota Fiscal (opcional)
+              </label>
+              <input
+                id="field-nota-fiscal"
+                type="text"
+                maxLength={MAX_NOTA_FISCAL_LENGTH}
+                value={notaFiscal}
+                onChange={(e) => setNotaFiscal(e.target.value)}
+                placeholder="Ex: 12345"
+                className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm text-slate-900 font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label htmlFor="field-notes" className="block text-xs font-medium text-slate-700 mb-1.5">
+                Observações (opcional)
+              </label>
+              <input
+                id="field-notes"
+                type="text"
+                maxLength={MAX_NOTES_LENGTH}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Lote, local no pátio ou observação da contagem"
+                className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
+              />
+            </div>
           </div>
 
           {errorMsg && (

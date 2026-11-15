@@ -6,6 +6,7 @@ import {
 } from '../types/inventory';
 import {
   clampNonNegative,
+  mergeMergedNotaFiscal,
   mergeMergedNotes,
   normalizeEstriboKey,
   sanitizeItemInput,
@@ -41,6 +42,10 @@ export function consolidateEstriboItems(items: InventoryItem[]): {
         qtdPecas: clampNonNegative(existing.qtdPecas + item.qtdPecas),
         qtdPacotes: clampNonNegative(existing.qtdPacotes + item.qtdPacotes),
         kg: clampNonNegative(existing.kg + item.kg),
+        notaFiscal: mergeMergedNotaFiscal(
+          existing.notaFiscal ?? '',
+          item.notaFiscal ?? ''
+        ),
         notes: mergeMergedNotes(existing.notes, item.notes),
       };
       changed = true;

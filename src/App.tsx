@@ -17,8 +17,8 @@ import {
   Unlock,
   X,
 } from 'lucide-react';
+import { ConsolidatedSummary } from './components/ConsolidatedSummary';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { EstriboSummaryByMedida } from './components/EstriboSummaryByMedida';
 import { InventoryTable } from './components/InventoryTable';
 import { ItemFormModal } from './components/ItemFormModal';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
@@ -79,7 +79,8 @@ function Workspace() {
   const [activeCategory, setActiveCategory] = useState<MaterialCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [arameFilter, setArameFilter] = useState<'all' | 'liso' | 'torcido'>('all');
-  const [barraFilter, setBarraFilter] = useState<'all' | 'etiqueta' | 'balanca'>('all');
+  const [barraFilter, setBarraFilter] = useState<'all' | 'etiqueta' | 'balanca' | 'ambos'>('all');
+  const [bobinaFilter, setBobinaFilter] = useState<'all' | 'etiqueta' | 'balanca' | 'ambos'>('all');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -178,6 +179,7 @@ function Workspace() {
             hasScaleWeight: Boolean(d.hasScaleWeight),
             scaleWeightKg: Number(d.scaleWeightKg ?? 0),
             wireType: d.wireType ?? 'none',
+            notaFiscal: String(d.notaFiscal ?? ''),
             notes: String(d.notes ?? ''),
             createdAt: d.createdAt,
             updatedAt: d.updatedAt,
@@ -246,20 +248,39 @@ function Workspace() {
         if (item.wireType !== arameFilter) return false;
       }
       if (activeCategory === 'barra' && barraFilter !== 'all') {
-        if (barraFilter === 'etiqueta' && !item.hasLabel) return false;
+        const hasEtiqueta = item.hasLabel || item.kg > 0;
+        if (barraFilter === 'etiqueta' && !hasEtiqueta) return false;
         if (barraFilter === 'balanca' && !item.hasScaleWeight) return false;
+        if (barraFilter === 'ambos' && !(hasEtiqueta && item.hasScaleWeight)) return false;
+      }
+      if (activeCategory === 'bobina' && bobinaFilter !== 'all') {
+        if (bobinaFilter === 'etiqueta' && !item.hasLabel) return false;
+        if (bobinaFilter === 'balanca' && !item.hasScaleWeight) return false;
+        if (bobinaFilter === 'ambos' && !(item.hasLabel && item.hasScaleWeight)) return false;
       }
       if (term) {
         const matchBitola = item.bitola.toLowerCase().includes(term);
         const matchMedida = item.medida.toLowerCase().includes(term);
         const matchLabel = item.labelCode.toLowerCase().includes(term);
+        const matchNf = (item.notaFiscal ?? '').toLowerCase().includes(term);
         const matchNotes = item.notes.toLowerCase().includes(term);
         const matchCat = CATEGORY_MAP[item.category].label.toLowerCase().includes(term);
-        return matchBitola || matchMedida || matchLabel || matchNotes || matchCat;
+        const matchOrigem =
+          (item.hasLabel && 'etiqueta'.includes(term)) ||
+          (item.hasScaleWeight && ('balanca'.includes(term) || 'balança'.includes(term)));
+        return (
+          matchBitola ||
+          matchMedida ||
+          matchLabel ||
+          matchNf ||
+          matchNotes ||
+          matchCat ||
+          matchOrigem
+        );
       }
       return true;
     });
-  }, [monthItems, activeCategory, arameFilter, barraFilter, searchQuery]);
+  }, [monthItems, activeCategory, arameFilter, barraFilter, bobinaFilter, searchQuery]);
 
   if (!authReady) {
     return (
@@ -462,6 +483,7 @@ function Workspace() {
           hasScaleWeight: src.hasScaleWeight,
           scaleWeightKg: src.scaleWeightKg,
           wireType: src.wireType,
+          notaFiscal: src.notaFiscal ?? '',
           notes: src.notes,
         })
       );
@@ -512,7 +534,8 @@ function Workspace() {
   const hasActiveFilters = Boolean(
     searchQuery.trim() ||
       (activeCategory === 'arame' && arameFilter !== 'all') ||
-      (activeCategory === 'barra' && barraFilter !== 'all')
+      (activeCategory === 'barra' && barraFilter !== 'all') ||
+      (activeCategory === 'bobina' && bobinaFilter !== 'all')
   );
 
   return (
@@ -853,7 +876,7 @@ function Workspace() {
             </div>
 
             {/* Sub-filters */}
-            {(activeCategory === 'arame' || activeCategory === 'barra') && (
+            {(activeCategory === 'arame' || activeCategory === 'barra' || activeCategory === 'bobina') && (
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
 
               {activeCategory === 'arame' && (
@@ -916,7 +939,7 @@ function Workspace() {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Com etiqueta
+                    Etiqueta
                   </button>
                   <button
                     type="button"
@@ -927,7 +950,67 @@ function Workspace() {
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    Com balança
+                    Balança Kg
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBarraFilter('ambos')}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer whitespace-nowrap ${
+                      barraFilter === 'ambos'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Os 2 pesos
+                  </button>
+                </div>
+              )}
+
+              {activeCategory === 'bobina' && (
+                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setBobinaFilter('all')}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer whitespace-nowrap ${
+                      bobinaFilter === 'all'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Todas as bobinas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBobinaFilter('etiqueta')}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer whitespace-nowrap ${
+                      bobinaFilter === 'etiqueta'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Etiqueta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBobinaFilter('balanca')}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer whitespace-nowrap ${
+                      bobinaFilter === 'balanca'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Balança Kg
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBobinaFilter('ambos')}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-md cursor-pointer whitespace-nowrap ${
+                      bobinaFilter === 'ambos'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Os 2 pesos
                   </button>
                 </div>
               )}
@@ -982,9 +1065,12 @@ function Workspace() {
             </div>
           )}
 
-          {/* Estribo Summary by Medida */}
-          {!dataLoading && (activeCategory === 'estribo' || activeCategory === 'all') && (
-            <EstriboSummaryByMedida items={filteredItems} />
+          {/* Consolidated Compatible Summary */}
+          {!dataLoading && filteredItems.length > 0 && (
+            <ConsolidatedSummary
+              items={filteredItems}
+              activeCategory={activeCategory}
+            />
           )}
 
           {/* Data Table Section */}
@@ -997,7 +1083,7 @@ function Workspace() {
                   type="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar por bitola, etiqueta ou observação..."
+                  placeholder="Buscar por bitola, nota fiscal, etiqueta ou observação..."
                   className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
                 />
               </div>
@@ -1084,6 +1170,7 @@ function Workspace() {
                     setSearchQuery('');
                     setArameFilter('all');
                     setBarraFilter('all');
+                    setBobinaFilter('all');
                   }}
                   className="mt-3 text-xs font-medium text-orange-600 hover:text-orange-700 underline cursor-pointer"
                 >
