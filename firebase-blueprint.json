@@ -1,0 +1,194 @@
+{
+  "entities": {
+    "MonthRecord": {
+      "title": "MonthRecord",
+      "description": "Monthly inventory period header and lock state for a user.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the owner."
+        },
+        "monthKey": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 7,
+          "pattern": "^[0-9]{4}-[0-9]{2}$",
+          "description": "Reference month in YYYY-MM format."
+        },
+        "isLocked": {
+          "type": "boolean",
+          "description": "Whether the monthly count is closed/locked for edits."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "General notes for the monthly inventory."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "ownerId",
+        "monthKey",
+        "isLocked",
+        "notes",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "Individual steel/material stock count item for a given month.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the owner."
+        },
+        "monthDocId": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 140,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Document ID of the parent month record."
+        },
+        "monthKey": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 7,
+          "pattern": "^[0-9]{4}-[0-9]{2}$",
+          "description": "Reference month in YYYY-MM format."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["estribo", "bobina", "barra", "tela_pop", "arame"],
+          "description": "Material category."
+        },
+        "bitola": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "Gauge / Bitola specification."
+        },
+        "medida": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Stirrup dimension / measurement for Estribo (e.g. 15x20)."
+        },
+        "qtdPecas": {
+          "type": "number",
+          "description": "Piece count (used for Estribo)."
+        },
+        "qtdPacotes": {
+          "type": "number",
+          "description": "Bundle/package count (used for Estribo)."
+        },
+        "unidades": {
+          "type": "number",
+          "description": "Unit count (used for Bobinas, Telas Pop, Arames)."
+        },
+        "qtdBarras": {
+          "type": "number",
+          "description": "Bar count (used for Barras)."
+        },
+        "kg": {
+          "type": "number",
+          "description": "Weight in kilograms."
+        },
+        "measurementMode": {
+          "type": "string",
+          "enum": ["unidade", "kg", "barras", "ambos"],
+          "description": "Selected measurement mode for Barras or Arames."
+        },
+        "hasLabel": {
+          "type": "boolean",
+          "description": "Whether the bar lot has an identification label (Etiqueta)."
+        },
+        "labelCode": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Optional label code or identifier."
+        },
+        "hasScaleWeight": {
+          "type": "boolean",
+          "description": "Whether the item was weighed on the scale (Balança)."
+        },
+        "scaleWeightKg": {
+          "type": "number",
+          "description": "Scale weight in kilograms (Balança)."
+        },
+        "wireType": {
+          "type": "string",
+          "enum": ["none", "liso", "torcido"],
+          "description": "Wire type for Arames (Liso or Torcido)."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Optional observation for this stock item."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "ownerId",
+        "monthDocId",
+        "monthKey",
+        "category",
+        "bitola",
+        "medida",
+        "qtdPecas",
+        "qtdPacotes",
+        "unidades",
+        "qtdBarras",
+        "kg",
+        "measurementMode",
+        "hasLabel",
+        "labelCode",
+        "hasScaleWeight",
+        "scaleWeightKg",
+        "wireType",
+        "notes",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/months/{monthDocId}": {
+      "schema": {
+        "$ref": "#/entities/MonthRecord"
+      },
+      "description": "Monthly inventory records owned by individual users."
+    },
+    "/inventoryItems/{itemId}": {
+      "schema": {
+        "$ref": "#/entities/InventoryItem"
+      },
+      "description": "Individual inventory line items linked to a MonthRecord."
+    }
+  }
+}

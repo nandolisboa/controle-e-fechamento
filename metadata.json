@@ -1,0 +1,8 @@
+{
+  "name": "AçoGestão — Controle de Estoque Mensal",
+  "description": "Sistema de controle de estoque mensal para estribos, bobinas, barras, telas pop e arames com registro de bitolas, etiquetas, balança e fechamento mensal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
