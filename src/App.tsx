@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { ConsolidatedSummary } from './components/ConsolidatedSummary';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { AuthGate } from './components/AuthGate';
 import { InventoryTable } from './components/InventoryTable';
 import { ItemFormModal } from './components/ItemFormModal';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
@@ -286,6 +287,22 @@ function Workspace() {
     return (
       <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center">
         <div className="text-sm text-slate-500">Carregando sistema...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthGate />;
+  }
+
+  if (user.email?.toLowerCase() !== 'aramesprojeto@gmail.com') {
+    return (
+      <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center px-6">
+        <div className="max-w-md w-full bg-white border border-slate-200 rounded-xl p-8">
+          <h1 className="text-xl font-semibold">Conta sem acesso</h1>
+          <p className="mt-3 text-sm text-slate-600">Para acessar o estoque, entre com aramesprojeto@gmail.com.</p>
+          <button type="button" onClick={signOutUser} className="mt-6 px-4 py-2 rounded-lg bg-slate-900 text-white">Sair e trocar de conta</button>
+        </div>
       </div>
     );
   }
