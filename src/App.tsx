@@ -748,6 +748,14 @@ function Workspace() {
           <div className="flex items-center gap-2.5 shrink-0">
             <button
               type="button"
+              onClick={() => signOutUser()}
+              className="sm:hidden inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 whitespace-nowrap"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sair</span>
+            </button>
+            <button
+              type="button"
               onClick={() => exportMonthlyCsv(selectedMonth, monthItems)}
               disabled={monthItems.length === 0}
               className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-xs font-medium text-slate-700 transition-colors cursor-pointer whitespace-nowrap shrink-0"
