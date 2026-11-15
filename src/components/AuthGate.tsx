@@ -86,7 +86,7 @@ export function AuthGate() {
                 Acessar painel de estoque
               </h2>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Entre com sua conta Google para criar e acompanhar suas contagens mensais em qualquer dispositivo.
+                Entre com a conta aramesprojeto@gmail.com para acessar suas contagens mensais em qualquer dispositivo.
               </p>
             </div>
 
@@ -111,7 +111,7 @@ export function AuthGate() {
               </button>
 
               <p className="mt-4 text-xs text-slate-500 leading-relaxed">
-                Seus lançamentos ficam vinculados exclusivamente à sua conta autenticada.
+                Os dados já salvos no modo de teste permanecem neste navegador, mas não são transferidos automaticamente para a nuvem.
               </p>
             </div>
           </div>
