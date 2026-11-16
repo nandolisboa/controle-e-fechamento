@@ -16,6 +16,7 @@ import {
 
 interface PrintPreviewModalProps {
   isOpen: boolean;
+  isTestMode?: boolean;
   onClose: () => void;
   monthKey: string;
   isLocked: boolean;
@@ -30,6 +31,7 @@ type PrintDetailLevel = 'simplificado' | 'detalhado';
 
 export function PrintPreviewModal({
   isOpen,
+  isTestMode = false,
   onClose,
   monthKey,
   isLocked,
@@ -200,6 +202,7 @@ export function PrintPreviewModal({
               </div>
             </header>
 
+            {isTestMode && <div className="p-2 border border-amber-600 text-center font-bold text-amber-900 text-xs">MODO TESTE LOCAL — NÃO REPRESENTA O ESTOQUE OFICIAL</div>}
             {monthNotes.trim() && (
               <div className="px-3 py-2 border-l-2 border-slate-400 bg-slate-50 text-xs text-slate-700">
                 <span className="font-semibold text-slate-900">Obs.:</span> {monthNotes}
