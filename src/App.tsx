@@ -30,7 +30,6 @@ import {
   db,
   handleFirestoreError,
   OperationType,
-  signInWithGoogle,
   signOutUser,
   testFirestoreConnection,
 } from './lib/firebase';
@@ -72,6 +71,7 @@ import {
 function Workspace() {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [testMode, setTestMode] = useState(false);
 
   const [monthsMap, setMonthsMap] = useState<Record<string, MonthRecord>>({});
   const [allItems, setAllItems] = useState<InventoryItem[]>([]);
@@ -106,6 +106,10 @@ function Workspace() {
       setUser(currentUser);
       setAuthReady(true);
       if (currentUser) {
+        setTestMode(false);
+        setMonthsMap({});
+        setAllItems([]);
+        setDataLoading(true);
         testFirestoreConnection();
       } else {
         setMonthsMap(loadLocalMonths());
@@ -303,11 +307,25 @@ function Workspace() {
     );
   }
 
-  if (!user) {
-    return <AuthGate />;
+  function handleEnterTestMode() {
+    if (auth.currentUser) return;
+    setUser(null);
+    setTestMode(true);
+    setMonthsMap(loadLocalMonths());
+    setAllItems(sortInventoryItems(loadLocalItems()));
+    setDataLoading(false);
   }
 
-  if (user.email?.toLowerCase() !== 'aramesprojeto@gmail.com') {
+  if (!user && !testMode) {
+    return (
+      <AuthGate
+        onEnterTestMode={handleEnterTestMode}
+        onGoogleLogin={(loggedUser) => setUser(loggedUser)}
+      />
+    );
+  }
+
+  if (user && user.email?.toLowerCase() !== 'aramesprojeto@gmail.com') {
     return (
       <div className="min-h-screen bg-[#F7F8FA] flex items-center justify-center px-6">
         <div className="max-w-md w-full bg-white border border-slate-200 rounded-xl p-8">
@@ -585,6 +603,7 @@ function Workspace() {
   return (
     <>
     <div className={`min-h-screen bg-[#F7F8FA] text-slate-900 flex ${printPreviewOpen ? 'no-print' : ''}`}>
+      {testMode && <div role="status" className="fixed bottom-0 left-0 right-0 z-[80] bg-amber-100 text-amber-900 text-center text-xs py-1 px-3 no-print">MODO TESTE — alterações ficam somente neste navegador e não são sincronizadas com o estoque oficial</div>}
       {/* Mobile Sidebar Backdrop */}
       {mobileMenuOpen && (
         <div
@@ -721,25 +740,18 @@ function Workspace() {
           ) : (
             <>
               <div className="text-xs font-medium text-slate-200 truncate">
-                Modo de Teste
+                Modo Teste local
               </div>
               <div className="text-[11px] text-slate-400 truncate mt-0.5">
                 Salvo localmente no navegador
               </div>
               <button
                 type="button"
-                onClick={async () => {
-                  setActionError(null);
-                  try {
-                    await signInWithGoogle();
-                  } catch {
-                    setActionError('Não foi possível conectar ao Google agora.');
-                  }
-                }}
+                onClick={() => { setTestMode(false); setAllItems([]); setMonthsMap({}); setMobileMenuOpen(false); }}
                 className="mt-3 w-full h-9 px-3 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 hover:text-white flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                <span>Conectar Firebase</span>
+                <span>Voltar para acesso oficial</span>
               </button>
             </>
           )}
@@ -780,7 +792,7 @@ function Workspace() {
           <div className="flex items-center justify-end gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
             <button
               type="button"
-              onClick={() => signOutUser()}
+              onClick={() => { if (user) { void signOutUser(); } else { setTestMode(false); setAllItems([]); setMonthsMap({}); } }}
               className="sm:hidden inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 whitespace-nowrap"
             >
               <LogOut className="w-4 h-4" />
@@ -1287,6 +1299,7 @@ function Workspace() {
 
     <PrintPreviewModal
       isOpen={printPreviewOpen}
+      isTestMode={testMode && !user}
       onClose={() => setPrintPreviewOpen(false)}
       monthKey={selectedMonth}
       isLocked={isMonthLocked}
@@ -1298,6 +1311,7 @@ function Workspace() {
     />
     <ExcelPreviewModal
       isOpen={excelPreviewOpen}
+      isTestMode={testMode && !user}
       onClose={() => setExcelPreviewOpen(false)}
       monthKey={selectedMonth}
       activeCategory={activeCategory}
