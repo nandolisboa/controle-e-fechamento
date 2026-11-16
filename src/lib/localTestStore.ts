@@ -47,6 +47,8 @@ export function consolidateEstriboItems(items: InventoryItem[]): {
           item.notaFiscal ?? ''
         ),
         notes: mergeMergedNotes(existing.notes, item.notes),
+        conferentes: Array.from(new Set([...(existing.conferentes ?? []), ...(item.conferentes ?? [])])),
+        temConferenciaSemNome: Boolean(existing.temConferenciaSemNome || item.temConferenciaSemNome || !existing.conferentes?.length || !item.conferentes?.length),
       };
       changed = true;
     }
