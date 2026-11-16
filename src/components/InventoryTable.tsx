@@ -482,6 +482,31 @@ export function InventoryTable({
     );
   }
 
+  if (activeCategory === 'outros_materiais') {
+    const totalUnits = items.reduce((sum, item) => sum + item.unidades, 0);
+    const totalKg = items.reduce((sum, item) => sum + item.kg, 0);
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead><tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-medium text-slate-500">
+            <th className="px-4 py-3">Nome do material</th><th className="px-4 py-3 text-right">Quantidade</th><th className="px-4 py-3 text-right">Kg por unidade</th><th className="px-4 py-3 text-right">Peso total (Kg)</th><th className="px-4 py-3">Nota Fiscal</th><th className="px-4 py-3">Observações</th><th className="px-4 py-3 text-right no-print">Ações</th>
+          </tr></thead>
+          <tbody className="divide-y divide-slate-200 text-sm">{items.map((item) => (
+            <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+              <td className="px-4 py-2.5 font-medium text-slate-900">{item.materialName || item.bitola}</td>
+              <td className="px-4 py-2.5 text-right font-mono-num">{item.unidades > 0 ? formatNumber(item.unidades) : '—'}</td>
+              <td className="px-4 py-2.5 text-right font-mono-num">{(item.kgPorUnidade ?? 0) > 0 ? `${formatNumber(item.kgPorUnidade ?? 0, 3)} kg` : '—'}</td>
+              <td className="px-4 py-2.5 text-right font-mono-num">{item.kg > 0 ? formatKg(item.kg) : '—'}</td>
+              <td className="px-4 py-2.5 text-xs font-mono-num">{item.notaFiscal || '—'}</td>
+              <td className="px-4 py-2.5 text-xs text-slate-500">{item.notes || '—'}</td>{renderActionCell(item)}
+            </tr>
+          ))}</tbody>
+          <tfoot><tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900"><td className="px-4 py-2.5">Total ({items.length} {items.length === 1 ? 'material' : 'materiais'})</td><td className="px-4 py-2.5 text-right">{totalUnits > 0 ? formatNumber(totalUnits) : '—'}</td><td /><td className="px-4 py-2.5 text-right">{totalKg > 0 ? formatKg(totalKg) : '—'}</td><td /><td className="no-print" /></tr></tfoot>
+        </table>
+      </div>
+    );
+  }
+
   if (activeCategory === 'arame') {
     let totalBoxUn = 0;
     let totalCoilUn = 0;
@@ -620,6 +645,8 @@ export function InventoryTable({
               qtySummary = item.qtdBarras > 0 ? `${formatNumber(item.qtdBarras)} barras` : 'Por peso';
             } else if (item.category === 'tela_pop') {
               qtySummary = `${formatNumber(item.unidades)} telas`;
+            } else if (item.category === 'outros_materiais') {
+              qtySummary = [item.unidades > 0 ? `${formatNumber(item.unidades)} un` : '', (item.kgPorUnidade ?? 0) > 0 ? `${formatNumber(item.kgPorUnidade ?? 0, 3)} kg/un` : '', item.kg > 0 ? formatKg(item.kg) : ''].filter(Boolean).join(' · ') || '—';
             } else if (item.category === 'arame') {
               const metrics = getArameMetrics(item.unidades, item.kg, item.measurementMode);
               if (metrics.isVariedCoil) {
@@ -701,7 +728,7 @@ export function InventoryTable({
                   {catMeta.label}
                 </td>
                 <td className="px-4 py-2.5 font-mono-num text-slate-800 whitespace-nowrap">
-                  {item.bitola}
+                  {item.category === 'outros_materiais' ? (item.materialName || item.bitola) : item.bitola}
                 </td>
                 <td className="px-4 py-2.5 font-mono-num text-slate-700 whitespace-nowrap">
                   {qtySummary}

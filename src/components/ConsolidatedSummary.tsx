@@ -28,6 +28,12 @@ export function ConsolidatedSummary({
   const [expanded, setExpanded] = useState(true);
 
   const summary = useMemo(() => consolidateInventoryItems(items), [items]);
+  const outrosMateriais = useMemo(
+    () => items.filter((item) => item.category === 'outros_materiais'),
+    [items]
+  );
+  const outrosMateriaisTotalUn = outrosMateriais.reduce((sum, item) => sum + item.unidades, 0);
+  const outrosMateriaisTotalKg = outrosMateriais.reduce((sum, item) => sum + item.kg, 0);
 
   const estriboByMedidaOnly = useMemo(() => {
     if (estriboMode !== 'medida') return [];
@@ -96,8 +102,11 @@ export function ConsolidatedSummary({
   const showArame =
     (activeCategory === 'all' || activeCategory === 'arame') &&
     summary.arames.length > 0;
+  const showOutrosMateriais =
+    (activeCategory === 'all' || activeCategory === 'outros_materiais') &&
+    outrosMateriais.length > 0;
 
-  if (!showEstribo && !showBobina && !showBarra && !showTela && !showArame) {
+  if (!showEstribo && !showBobina && !showBarra && !showTela && !showArame && !showOutrosMateriais) {
     return null;
   }
 
@@ -112,7 +121,9 @@ export function ConsolidatedSummary({
             ? 'Soma de Telas Pop por Código'
             : activeCategory === 'arame'
               ? 'Soma de Arames por Tipo e Bitola'
-              : 'Soma Consolidada por Compatibilidade';
+              : activeCategory === 'outros_materiais'
+                ? 'Soma de Outros Materiais'
+                : 'Soma Consolidada por Compatibilidade';
 
   const headerSubtitle =
     activeCategory === 'all'
@@ -154,7 +165,9 @@ export function ConsolidatedSummary({
                 .join(' · ')
             : activeCategory === 'tela_pop'
               ? `${formatNumber(summary.telaTotalUn)} telas (${summary.telas.length} ${summary.telas.length === 1 ? 'tipo' : 'tipos'})`
-              : `${formatKg(summary.arameTotalKg)} · ${formatNumber(summary.arameTotalLancamentos)} ${summary.arameTotalLancamentos === 1 ? 'lançamento' : 'lançamentos'}`;
+              : activeCategory === 'arame'
+                ? `${formatKg(summary.arameTotalKg)} · ${formatNumber(summary.arameTotalLancamentos)} ${summary.arameTotalLancamentos === 1 ? 'lançamento' : 'lançamentos'}`
+                : `${outrosMateriais.length} ${outrosMateriais.length === 1 ? 'material' : 'materiais'}${outrosMateriaisTotalUn > 0 ? ` · ${formatNumber(outrosMateriaisTotalUn)} un` : ''}${outrosMateriaisTotalKg > 0 ? ` · ${formatKg(outrosMateriaisTotalKg)}` : ''}`;
 
   return (
     <section
@@ -677,6 +690,43 @@ export function ConsolidatedSummary({
             </div>
           )}
 
+          {/* Outros materiais */}
+          {showOutrosMateriais && (
+            <div>
+              {activeCategory === 'all' && (
+                <div className="px-4 py-2 bg-slate-50/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-700">Outros materiais</span>
+                  <span className="text-xs text-slate-500 font-mono-num">
+                    {outrosMateriais.length} {outrosMateriais.length === 1 ? 'material' : 'materiais'}
+                    {outrosMateriaisTotalUn > 0 ? ` · ${formatNumber(outrosMateriaisTotalUn)} un` : ''}
+                    {outrosMateriaisTotalKg > 0 ? ` · ${formatKg(outrosMateriaisTotalKg)}` : ''}
+                  </span>
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead><tr className="border-b border-slate-200 bg-slate-50/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="py-2 px-4">Material</th><th className="py-2 px-4 text-right">Lançamentos</th><th className="py-2 px-4 text-right">Quantidade</th><th className="py-2 px-4 text-right">Kg por unidade</th><th className="py-2 px-4 text-right">Peso total</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-slate-200 text-sm">
+                    {outrosMateriais.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-2 px-4 font-semibold text-slate-900">{item.materialName || item.bitola}</td>
+                        <td className="py-2 px-4 text-right font-mono-num text-slate-600">1</td>
+                        <td className="py-2 px-4 text-right font-mono-num">{item.unidades > 0 ? formatNumber(item.unidades) : '—'}</td>
+                        <td className="py-2 px-4 text-right font-mono-num">{(item.kgPorUnidade ?? 0) > 0 ? `${formatNumber(item.kgPorUnidade ?? 0, 3)} kg` : '—'}</td>
+                        <td className="py-2 px-4 text-right font-mono-num font-semibold">{item.kg > 0 ? formatKg(item.kg) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot><tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900">
+                    <td className="py-2 px-4">Total Outros Materiais</td><td className="py-2 px-4 text-right">{outrosMateriais.length}</td><td className="py-2 px-4 text-right">{outrosMateriaisTotalUn > 0 ? formatNumber(outrosMateriaisTotalUn) : '—'}</td><td /><td className="py-2 px-4 text-right">{outrosMateriaisTotalKg > 0 ? formatKg(outrosMateriaisTotalKg) : '—'}</td>
+                  </tr></tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Separated Grand Totals Bar when viewing all categories */}
           {activeCategory === 'all' &&
             (summary.totalSemBalancaKg > 0 || summary.totalBalancaKg > 0) && (
@@ -688,7 +738,7 @@ export function ConsolidatedSummary({
                   {summary.totalSemBalancaKg > 0 && (
                     <div>
                       <span className="text-slate-400 mr-1.5">
-                        Peso (Estribo · Arame · Etiqueta/Lote):
+                        Peso (Estoque + outros materiais):
                       </span>
                       <span className="text-sm font-bold text-white">
                         {formatKg(summary.totalSemBalancaKg)}
