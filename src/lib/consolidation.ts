@@ -280,8 +280,11 @@ export function consolidateInventoryItems(
     .filter((r) => r.isVariedCoil)
     .reduce((s, r) => s + r.unidades, 0);
 
+  const outrosMateriaisTotalKg = items
+    .filter((item) => item.category === 'outros_materiais')
+    .reduce((sum, item) => sum + item.kg, 0);
   const totalSemBalancaKg =
-    estriboTotalKg + bobinaTotalEtiquetaKg + barraTotalKg + arameTotalKg;
+    estriboTotalKg + bobinaTotalEtiquetaKg + barraTotalKg + arameTotalKg + outrosMateriaisTotalKg;
   const totalBalancaKg = bobinaTotalBalancaKg + barraTotalBalanca;
 
   return {

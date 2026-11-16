@@ -17,6 +17,8 @@ export function exportMonthlyCsv(monthKey: string, items: InventoryItem[]): void
   const headers = [
     'Mês Referência',
     'Categoria',
+    'Nome do Material',
+    'Kg por Unidade',
     'Tipo Arame',
     'Bitola',
     'Medida (Estribo)',
@@ -47,12 +49,14 @@ export function exportMonthlyCsv(monthKey: string, items: InventoryItem[]): void
     return [
       formatMonthLabel(monthKey),
       categoryLabel,
+      item.category === 'outros_materiais' ? item.materialName || item.bitola : '',
+      item.category === 'outros_materiais' && (item.kgPorUnidade ?? 0) > 0 ? item.kgPorUnidade ?? 0 : '',
       wireLabel,
       item.bitola,
       item.category === 'estribo' ? item.medida : '',
       item.category === 'estribo' ? item.qtdPecas : '',
       item.category === 'estribo' ? item.qtdPacotes : '',
-      item.category === 'bobina' || item.category === 'tela_pop'
+      item.category === 'bobina' || item.category === 'tela_pop' || item.category === 'outros_materiais'
         ? item.unidades
         : item.category === 'arame'
           ? getArameMetrics(item.unidades, item.kg, item.measurementMode).unidades

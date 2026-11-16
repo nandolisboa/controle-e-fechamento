@@ -61,13 +61,17 @@ export function buildMonthDocId(uid: string, monthKey: string): string {
 export function sanitizeItemInput(input: InventoryItemInput): InventoryItemInput {
   const bitola = sanitizeText(input.bitola, MAX_BITOLA_LENGTH);
   const medida = input.category === 'estribo' ? sanitizeText(input.medida, MAX_MEDIDA_LENGTH) : '';
+  const materialName = input.category === 'outros_materiais' ? sanitizeText(input.materialName ?? '', MAX_BITOLA_LENGTH) : '';
+  const kgPorUnidade = input.category === 'outros_materiais' ? clampNonNegative(input.kgPorUnidade ?? 0) : 0;
   const labelCode = input.hasLabel ? sanitizeText(input.labelCode, MAX_LABEL_LENGTH) : '';
   const notaFiscal = sanitizeText(input.notaFiscal ?? '', MAX_NOTA_FISCAL_LENGTH);
   const notes = sanitizeText(input.notes, MAX_NOTES_LENGTH);
 
   return {
     category: input.category,
-    bitola,
+    bitola: input.category === 'outros_materiais' ? materialName : bitola,
+    materialName,
+    kgPorUnidade,
     medida,
     qtdPecas: clampNonNegative(input.qtdPecas),
     qtdPacotes: clampNonNegative(input.qtdPacotes),
