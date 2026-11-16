@@ -1,4 +1,4 @@
-export type MaterialCategory = 'estribo' | 'bobina' | 'barra' | 'tela_pop' | 'arame';
+export type MaterialCategory = 'estribo' | 'bobina' | 'barra' | 'tela_pop' | 'arame' | 'outros_materiais';
 export type MeasurementMode = 'unidade' | 'kg' | 'barras' | 'ambos';
 export type WireType = 'none' | 'liso' | 'torcido';
 
@@ -27,6 +27,8 @@ export interface InventoryItem {
   monthKey: string;
   category: MaterialCategory;
   bitola: string;
+  materialName?: string;
+  kgPorUnidade?: number;
   medida: string;
   qtdPecas: number;
   qtdPacotes: number;
@@ -48,6 +50,8 @@ export interface InventoryItem {
 export interface InventoryItemInput {
   category: MaterialCategory;
   bitola: string;
+  materialName?: string;
+  kgPorUnidade?: number;
   medida: string;
   qtdPecas: number;
   qtdPacotes: number;
@@ -117,6 +121,12 @@ export const CATEGORIES: CategoryMeta[] = [
       'BWG 14 (2.11 mm)',
       'BWG 12 (2.77 mm)',
     ],
+  },  {
+    id: 'outros_materiais',
+    label: 'Outros materiais',
+    shortLabel: 'Outros',
+    description: 'Nome obrigatório; quantidade e kg por unidade conforme disponíveis',
+    bitolaPresets: [],
   },
 ];
 
@@ -126,6 +136,7 @@ export const CATEGORY_MAP: Record<MaterialCategory, CategoryMeta> = {
   barra: CATEGORIES[2],
   tela_pop: CATEGORIES[3],
   arame: CATEGORIES[4],
+  outros_materiais: CATEGORIES[5],
 };
 
 export interface TelaPopSpec {
