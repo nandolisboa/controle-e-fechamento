@@ -724,6 +724,11 @@ function Workspace() {
         {/* Top Bar */}
         <header className="min-h-16 sm:h-16 bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-0 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-4 no-print">
           <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+            <img
+              src={`${import.meta.env.BASE_URL}logo-arames-brasil.jpg`}
+              alt="Arames Brasil"
+              className="h-9 w-auto max-w-[120px] object-contain shrink-0"
+            />
             <div className="flex items-center gap-2 text-sm min-w-0 truncate">
               <span className="text-slate-500 hidden sm:inline">Estoque Mensal</span>
               <span className="text-slate-300 hidden sm:inline">/</span>
