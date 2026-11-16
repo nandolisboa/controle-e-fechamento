@@ -1,14 +1,8 @@
 import { useState } from 'react';
-import { type User } from 'firebase/auth';
 import { ArrowRight } from 'lucide-react';
 import { signInWithGoogle } from '../lib/firebase';
 
-interface AuthGateProps {
-  onEnterTestMode?: () => void;
-  onGoogleLogin?: (user: User) => void;
-}
-
-export function AuthGate({ onEnterTestMode, onGoogleLogin }: AuthGateProps) {
+export function AuthGate() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
@@ -17,14 +11,13 @@ export function AuthGate({ onEnterTestMode, onGoogleLogin }: AuthGateProps) {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const loggedUser = await signInWithGoogle();
-      onGoogleLogin?.(loggedUser);
+      await signInWithGoogle();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Falha ao autenticar com o Google.';
       if (msg.includes('popup-closed-by-user')) {
         setErrorMsg('A janela de login foi fechada antes da conclusão.');
       } else {
-        setErrorMsg('Não foi possível entrar com o Google. Você pode usar o modo teste abaixo.');
+        setErrorMsg('Não foi possível entrar com o Google. Tente novamente.');
       }
     } finally {
       setLoading(false);
@@ -116,28 +109,11 @@ export function AuthGate({ onEnterTestMode, onGoogleLogin }: AuthGateProps) {
               <ArrowRight className="w-4 h-4 shrink-0 opacity-75" />
             </button>
 
-            {onEnterTestMode && (
-              <>
-                <div className="flex items-center gap-3 py-1" aria-hidden="true">
-                  <div className="h-px bg-slate-200 flex-1" />
-                  <span className="text-[11px] font-medium text-slate-400">ou</span>
-                  <div className="h-px bg-slate-200 flex-1" />
-                </div>
 
-                <button
-                  type="button"
-                  onClick={onEnterTestMode}
-                  disabled={loading}
-                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 disabled:opacity-60 text-slate-700 text-sm font-medium flex items-center justify-center transition-colors duration-150 cursor-pointer whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
-                >
-                  <span>Entrar no modo teste</span>
-                </button>
-              </>
-            )}
           </div>
 
           <p className="mt-6 text-center text-xs text-slate-400 leading-relaxed">
-            Use aramesprojeto@gmail.com para acessar o estoque oficial. No modo teste, os dados ficam apenas neste navegador e não são sincronizados.
+            Use aramesprojeto@gmail.com para acessar o estoque oficial.
           </p>
         </div>
 

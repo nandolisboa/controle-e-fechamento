@@ -10,7 +10,6 @@ import {
 
 interface ExcelPreviewModalProps {
   isOpen: boolean;
-  isTestMode?: boolean;
   onClose: () => void;
   monthKey: string;
   activeCategory: MaterialCategory | 'all';
@@ -24,7 +23,6 @@ const EXCEL_COL_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
 export function ExcelPreviewModal({
   isOpen,
-  isTestMode = false,
   onClose,
   monthKey,
   activeCategory,
@@ -58,8 +56,8 @@ export function ExcelPreviewModal({
   );
 
   const excelData = useMemo(
-    () => buildMonthlyExcelData(monthKey, itemsToExport, isTestMode),
-    [monthKey, itemsToExport, isTestMode]
+    () => buildMonthlyExcelData(monthKey, itemsToExport),
+    [monthKey, itemsToExport]
   );
 
   if (!isOpen) return null;
@@ -68,7 +66,7 @@ export function ExcelPreviewModal({
     if (itemsToExport.length === 0 || downloading) return;
     setDownloading(true);
     try {
-      await exportMonthlyExcel(monthKey, itemsToExport, isTestMode);
+      await exportMonthlyExcel(monthKey, itemsToExport);
     } catch {
       onExportError?.('Não foi possível exportar o arquivo Excel.');
     } finally {
