@@ -130,6 +130,7 @@ export function createLocalItemRecord(
     monthDocId: `local_test_${monthKey}`,
     monthKey,
     ...sanitized,
+    ...(rawInput.conferentes ? { conferentes: rawInput.conferentes } : {}),
   };
 }
 

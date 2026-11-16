@@ -119,7 +119,7 @@ export function consolidateInventoryItems(
       const bitola = item.bitola.trim() || '—';
       const cleanedMedida = item.medida.trim().replace(/\s+/g, ' ');
       const hasMedida = cleanedMedida.length > 0;
-      const medida = hasMedida ? cleanedMedida : 'Sem medida';
+      const medida = hasMedida ? cleanedMedida : 'S/ med.';
       const key = `${bitola.toLowerCase()}::${hasMedida ? cleanedMedida.toLowerCase() : '__sem_medida__'}`;
       const cur = estriboMap.get(key);
       if (cur) {
@@ -196,7 +196,7 @@ export function consolidateInventoryItems(
           key,
           bitola,
           code: spec ? `${spec.code} (${spec.fio})` : bitola,
-          specText: spec ? `${spec.nome} · Malha ${spec.malha}` : 'Código personalizado',
+          specText: spec ? `${spec.shortNome} · ${spec.malha}` : 'Personalizada',
           lancamentos: 1,
           unidades: item.unidades,
         });
@@ -280,8 +280,11 @@ export function consolidateInventoryItems(
     .filter((r) => r.isVariedCoil)
     .reduce((s, r) => s + r.unidades, 0);
 
+  const outrosMateriaisTotalKg = items
+    .filter((item) => item.category === 'outros_materiais')
+    .reduce((sum, item) => sum + item.kg, 0);
   const totalSemBalancaKg =
-    estriboTotalKg + bobinaTotalEtiquetaKg + barraTotalKg + arameTotalKg;
+    estriboTotalKg + bobinaTotalEtiquetaKg + barraTotalKg + arameTotalKg + outrosMateriaisTotalKg;
   const totalBalancaKg = bobinaTotalBalancaKg + barraTotalBalanca;
 
   return {

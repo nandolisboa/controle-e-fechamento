@@ -54,6 +54,12 @@ export function mergeMergedNotaFiscal(existingNf: string, incomingNf: string): s
   return `${a} · ${b}`.slice(0, MAX_NOTA_FISCAL_LENGTH);
 }
 
+function mergeConferentes(a: string[] = [], b: string[] = []): string[] {
+  const nomes = Array.from(new Set([...a, ...b]));
+  if (nomes.length > 5) throw new Error('Limite de cinco responsáveis para o mesmo lançamento.');
+  return nomes;
+}
+
 export function buildMonthDocId(uid: string, monthKey: string): string {
   return `${uid}_${monthKey}`;
 }
@@ -61,13 +67,17 @@ export function buildMonthDocId(uid: string, monthKey: string): string {
 export function sanitizeItemInput(input: InventoryItemInput): InventoryItemInput {
   const bitola = sanitizeText(input.bitola, MAX_BITOLA_LENGTH);
   const medida = input.category === 'estribo' ? sanitizeText(input.medida, MAX_MEDIDA_LENGTH) : '';
+  const materialName = input.category === 'outros_materiais' ? sanitizeText(input.materialName ?? '', MAX_BITOLA_LENGTH) : '';
+  const kgPorUnidade = input.category === 'outros_materiais' ? clampNonNegative(input.kgPorUnidade ?? 0) : 0;
   const labelCode = input.hasLabel ? sanitizeText(input.labelCode, MAX_LABEL_LENGTH) : '';
   const notaFiscal = sanitizeText(input.notaFiscal ?? '', MAX_NOTA_FISCAL_LENGTH);
   const notes = sanitizeText(input.notes, MAX_NOTES_LENGTH);
 
   return {
     category: input.category,
-    bitola,
+    bitola: input.category === 'outros_materiais' ? materialName : bitola,
+    ...(input.category === 'outros_materiais' ? { materialName, kgPorUnidade } : {}),
+    ...(input.conferentes ? { conferentes: mergeConferentes([], input.conferentes.map((name) => sanitizeText(name, 80)).filter(Boolean)) } : {}),
     medida,
     qtdPecas: clampNonNegative(input.qtdPecas),
     qtdPacotes: clampNonNegative(input.qtdPacotes),
@@ -181,6 +191,8 @@ export async function createInventoryItem(
             sanitized.notaFiscal ?? ''
           ),
           notes: mergeMergedNotes(existingMatch.notes, sanitized.notes),
+          conferentes: mergeConferentes(existingMatch.conferentes, sanitized.conferentes),
+          temConferenciaSemNome: Boolean(existingMatch.temConferenciaSemNome || !existingMatch.conferentes?.length),
           updatedAt: serverTimestamp(),
         });
         return existingMatch.id;
@@ -232,7 +244,7 @@ export async function createInventoryItemsBatch(
 
   const aggregatedUpdates = new Map<
     string,
-    { id: string; qtdPecas: number; qtdPacotes: number; kg: number; notaFiscal: string; notes: string }
+    { id: string; qtdPecas: number; qtdPacotes: number; kg: number; notaFiscal: string; notes: string; conferentes: string[]; temConferenciaSemNome: boolean }
   >();
   const aggregatedCreates = new Map<string, InventoryItemInput>();
   const nonEstriboCreates: InventoryItemInput[] = [];
@@ -258,6 +270,8 @@ export async function createInventoryItemsBatch(
         kg: existing.kg,
         notaFiscal: existing.notaFiscal ?? '',
         notes: existing.notes,
+        conferentes: existing.conferentes ?? [],
+        temConferenciaSemNome: Boolean(existing.temConferenciaSemNome || !existing.conferentes?.length),
       };
       aggregatedUpdates.set(existing.id, {
         id: existing.id,
@@ -266,6 +280,8 @@ export async function createInventoryItemsBatch(
         kg: clampNonNegative(prev.kg + sanitized.kg),
         notaFiscal: mergeMergedNotaFiscal(prev.notaFiscal, sanitized.notaFiscal ?? ''),
         notes: mergeMergedNotes(prev.notes, sanitized.notes),
+        conferentes: mergeConferentes(prev.conferentes, sanitized.conferentes),
+        temConferenciaSemNome: prev.temConferenciaSemNome,
       });
     } else {
       const prevCreate = aggregatedCreates.get(key);
@@ -280,6 +296,7 @@ export async function createInventoryItemsBatch(
             sanitized.notaFiscal ?? ''
           ),
           notes: mergeMergedNotes(prevCreate.notes, sanitized.notes),
+          conferentes: mergeConferentes(prevCreate.conferentes, sanitized.conferentes),
         });
       } else {
         aggregatedCreates.set(key, sanitized);
@@ -295,6 +312,8 @@ export async function createInventoryItemsBatch(
       kg: update.kg,
       notaFiscal: update.notaFiscal,
       notes: update.notes,
+      conferentes: update.conferentes,
+      temConferenciaSemNome: update.temConferenciaSemNome,
       updatedAt: serverTimestamp(),
     });
   }
@@ -354,6 +373,8 @@ export async function updateInventoryItem(
           sanitized.notaFiscal ?? ''
         ),
         notes: mergeMergedNotes(otherMatch.notes, sanitized.notes),
+        conferentes: mergeConferentes(otherMatch.conferentes, existingMonthItems.find((item) => item.id === itemId)?.conferentes),
+        temConferenciaSemNome: Boolean(otherMatch.temConferenciaSemNome || !otherMatch.conferentes?.length || !existingMonthItems.find((item) => item.id === itemId)?.conferentes?.length),
         updatedAt: serverTimestamp(),
       });
       batch.delete(currentRef);
@@ -405,6 +426,9 @@ export async function copyMonthItems(
     const sanitized = sanitizeItemInput({
       category: src.category,
       bitola: src.bitola,
+      materialName: src.materialName,
+      kgPorUnidade: src.kgPorUnidade,
+      conferentes: src.conferentes,
       medida: src.medida ?? '',
       qtdPecas: src.qtdPecas,
       qtdPacotes: src.qtdPacotes,
