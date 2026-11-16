@@ -56,8 +56,7 @@ export const EXCEL_COLUMNS: ExcelColumnDef[] = [
 
 export function buildMonthlyExcelData(
   monthKey: string,
-  items: InventoryItem[],
-  isTestMode = false
+  items: InventoryItem[]
 ): MonthlyExcelData {
   const responsaveis = Array.from(
     new Set(items.flatMap((item) => item.conferentes ?? []))
@@ -146,7 +145,7 @@ export function buildMonthlyExcelData(
     fileName: `Arames-Brasil-Estoque-${monthKey}.xlsx`,
     sheetName: 'Estoque mensal',
     title: `ESTOQUE MENSAL — ${formatMonthLabel(monthKey).toUpperCase()}`,
-    subtitle: isTestMode ? 'MODO TESTE LOCAL — NÃO REPRESENTA O ESTOQUE OFICIAL' : 'ARAMES BRASIL',
+    subtitle: 'ARAMES BRASIL',
     metaLine: `Ref.: ${formatMonthShortLabel(monthKey)} · Emissão: ${new Intl.DateTimeFormat('pt-BR').format(new Date())}`,
     responsaveisLine: `Resp.: ${responsaveis.length ? responsaveis.join(', ') : '—'}${missing ? ' · Há itens s/ resp.' : ''}`,
     columns: EXCEL_COLUMNS,
@@ -156,8 +155,8 @@ export function buildMonthlyExcelData(
   };
 }
 
-export async function exportMonthlyExcel(monthKey: string, items: InventoryItem[], isTestMode = false): Promise<void> {
-  const data = buildMonthlyExcelData(monthKey, items, isTestMode);
+export async function exportMonthlyExcel(monthKey: string, items: InventoryItem[]): Promise<void> {
+  const data = buildMonthlyExcelData(monthKey, items);
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Arames Brasil';
   workbook.subject = 'Relatório de estoque mensal';
