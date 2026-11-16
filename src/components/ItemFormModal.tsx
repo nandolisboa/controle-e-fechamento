@@ -16,6 +16,7 @@ import {
   MAX_MEDIDA_LENGTH,
   MAX_NOTA_FISCAL_LENGTH,
   MAX_NOTES_LENGTH,
+  MAX_NUMERIC_VALUE,
   type MaterialCategory,
   type MeasurementMode,
   resolveTelaPopByCode,
@@ -138,6 +139,9 @@ export function ItemFormModal({
   onSubmitBatch,
 }: ItemFormModalProps) {
   const [category, setCategory] = useState<MaterialCategory>(defaultCategory);
+  const [materialName, setMaterialName] = useState('');
+  const [materialQty, setMaterialQty] = useState('');
+  const [kgPorUnidade, setKgPorUnidade] = useState('');
   const [bitola, setBitola] = useState('');
   const [medida, setMedida] = useState('');
   const [qtdPecas, setQtdPecas] = useState('');
@@ -173,6 +177,9 @@ export function ItemFormModal({
     setSessionAdded([]);
     if (editingItem) {
       setCategory(editingItem.category);
+      setMaterialName(editingItem.materialName ?? '');
+      setMaterialQty(editingItem.category === 'outros_materiais' && editingItem.unidades > 0 ? String(editingItem.unidades) : '');
+      setKgPorUnidade(editingItem.category === 'outros_materiais' && (editingItem.kgPorUnidade ?? 0) > 0 ? String(editingItem.kgPorUnidade) : '');
       setBitola(editingItem.bitola);
       setMedida(editingItem.medida ?? '');
       setQtdPecas(editingItem.qtdPecas > 0 ? String(editingItem.qtdPecas) : '');
@@ -264,6 +271,9 @@ export function ItemFormModal({
       setBobinaRows([createEmptyBobinaRow()]);
     } else {
       setCategory(defaultCategory);
+      setMaterialName('');
+      setMaterialQty('');
+      setKgPorUnidade('');
       setBitola(defaultCategory === 'bobina' ? loadBobinaBitolaDefault() : '');
       setMedida('');
       setQtdPecas('');
@@ -293,7 +303,14 @@ export function ItemFormModal({
   function handleCategoryChange(nextCat: MaterialCategory) {
     setCategory(nextCat);
     setErrorMsg(null);
-    if (nextCat === 'bobina') {
+    if (nextCat !== 'outros_materiais') {
+      setMaterialName('');
+      setMaterialQty('');
+      setKgPorUnidade('');
+    }
+    if (nextCat === 'arame' && wireType === 'torcido') {
+      setBitola('BWG 18 (1.24 mm)');
+    } else if (nextCat === 'bobina') {
       const savedBitola = loadBobinaBitolaDefault();
       if (savedBitola) {
         setBitola(savedBitola);
@@ -302,6 +319,9 @@ export function ItemFormModal({
       }
     } else if (!CATEGORY_MAP[nextCat].bitolaPresets.includes(bitola)) {
       setBitola('');
+    }
+    if (nextCat === 'estribo') {
+      setNotaFiscal('');
     }
     if (nextCat === 'barra') {
       setBarraSource('etiqueta');
@@ -315,12 +335,52 @@ export function ItemFormModal({
   }
 
   function buildValidatedPayload(): InventoryItemInput | null {
+    if (category === 'outros_materiais') {
+      const name = materialName.trim().slice(0, MAX_BITOLA_LENGTH);
+      const qty = materialQty.trim() ? parseNumericInput(materialQty) : 0;
+      const perUnitKg = kgPorUnidade.trim() ? parseNumericInput(kgPorUnidade) : 0;
+      if (!name) { setErrorMsg('Informe o nome do material.'); return null; }
+      if (!materialQty.trim() && !kgPorUnidade.trim()) { setErrorMsg('Informe a quantidade, o kg por unidade ou os dois.'); return null; }
+      if ((materialQty.trim() && qty <= 0) || (kgPorUnidade.trim() && perUnitKg <= 0)) {
+        setErrorMsg('Os valores informados devem ser maiores que zero.');
+        return null;
+      }
+      const totalKg = qty > 0 && perUnitKg > 0 ? qty * perUnitKg : 0;
+      if (qty > MAX_NUMERIC_VALUE || perUnitKg > MAX_NUMERIC_VALUE || !Number.isFinite(totalKg) || totalKg > MAX_NUMERIC_VALUE) {
+        setErrorMsg('Os valores e o peso total devem respeitar o limite numérico do sistema.');
+        return null;
+      }
+      return {
+        category,
+        bitola: name,
+        materialName: name,
+        kgPorUnidade: perUnitKg,
+        medida: '',
+        qtdPecas: 0,
+        qtdPacotes: 0,
+        unidades: qty,
+        qtdBarras: 0,
+        kg: totalKg,
+        measurementMode: 'ambos',
+        hasLabel: false,
+        labelCode: '',
+        hasScaleWeight: false,
+        scaleWeightKg: 0,
+        wireType: 'none',
+        notaFiscal: notaFiscal.trim().slice(0, MAX_NOTA_FISCAL_LENGTH),
+        notes: notes.trim().slice(0, MAX_NOTES_LENGTH),
+      };
+    }
     if (!bitola.trim()) {
       setErrorMsg(
         category === 'tela_pop'
           ? 'Selecione o código da tela.'
           : 'Selecione a bitola do material.'
       );
+      return null;
+    }
+    if (category === 'arame' && wireType === 'torcido' && bitola !== 'BWG 18 (1.24 mm)') {
+      setErrorMsg('Para arame torcido, a única bitola disponível é BWG 18 (1.24 mm).');
       return null;
     }
 
@@ -469,14 +529,14 @@ export function ItemFormModal({
             : false,
       scaleWeightKg: parsedScaleKg,
       wireType: category === 'arame' ? (wireType === 'none' ? 'liso' : wireType) : 'none',
-      notaFiscal: notaFiscal.trim().slice(0, MAX_NOTA_FISCAL_LENGTH),
+      notaFiscal: category === 'estribo' ? '' : notaFiscal.trim().slice(0, MAX_NOTA_FISCAL_LENGTH),
       notes: notes.trim().slice(0, MAX_NOTES_LENGTH),
     };
   }
 
   function formatAddedSummary(payload: InventoryItemInput): string {
     const label = CATEGORY_MAP[payload.category].label;
-    const nfSuffix = payload.notaFiscal ? ` · NF ${payload.notaFiscal}` : '';
+    const nfSuffix = payload.category !== 'estribo' && payload.notaFiscal ? ` · NF ${payload.notaFiscal}` : '';
     if (payload.category === 'estribo') {
       const parts = [label, payload.bitola];
       if (payload.medida) parts.push(payload.medida);
@@ -495,6 +555,12 @@ export function ItemFormModal({
       if (payload.hasLabel && payload.kg > 0) parts.push(`Etiqueta ${formatKg(payload.kg)}`);
       if (payload.hasScaleWeight && payload.scaleWeightKg > 0) parts.push(`Balança ${formatKg(payload.scaleWeightKg)}`);
       return `${parts.join(' · ')}${nfSuffix}`;
+    }
+    if (payload.category === 'outros_materiais') {
+      const qty = payload.unidades > 0 ? `${formatNumber(payload.unidades)} un` : '';
+      const perUnit = (payload.kgPorUnidade ?? 0) > 0 ? `${formatNumber(payload.kgPorUnidade ?? 0, 3)} kg/un` : '';
+      const total = payload.kg > 0 ? formatKg(payload.kg) : '';
+      return `${payload.materialName || payload.bitola}${[qty, perUnit, total].filter(Boolean).length ? ` · ${[qty, perUnit, total].filter(Boolean).join(' · ')}` : ''}${nfSuffix}`;
     }
     if (payload.category === 'tela_pop') {
       const resolvedTela = resolveTelaPopByCode(payload.bitola);
@@ -523,6 +589,12 @@ export function ItemFormModal({
   }
 
   function resetFieldsForNextEntry() {
+    if (category === 'outros_materiais') {
+      setBitola('');
+    }
+    setMaterialName('');
+    setMaterialQty('');
+    setKgPorUnidade('');
     setMedida('');
     setQtdPecas('');
     setQtdPacotes('');
@@ -671,10 +743,15 @@ export function ItemFormModal({
 
   const hasCurrentEntryValues =
     bitola.trim().length > 0 ||
+    materialName.trim().length > 0 ||
+    materialQty.trim().length > 0 ||
+    kgPorUnidade.trim().length > 0 ||
     medida.trim().length > 0 ||
     qtdPecas.trim().length > 0 ||
     qtdPacotes.trim().length > 0 ||
-    unidades.trim().length > 0 ||
+    (category === 'arame' && measurementMode === 'kg'
+      ? unidades.trim().length > 0 && unidades.trim() !== '1'
+      : unidades.trim().length > 0) ||
     arameCaixas.trim().length > 0 ||
     arameAvulsas.trim().length > 0 ||
     qtdBarras.trim().length > 0 ||
@@ -795,7 +872,7 @@ export function ItemFormModal({
           hasScaleWeight: false,
           scaleWeightKg: 0,
           wireType: 'none',
-          notaFiscal: notaFiscal.trim().slice(0, MAX_NOTA_FISCAL_LENGTH),
+          notaFiscal: '',
           notes: notes.trim().slice(0, MAX_NOTES_LENGTH),
         });
       }
@@ -870,7 +947,7 @@ export function ItemFormModal({
               <label className="block text-xs font-medium text-slate-700 mb-2">
                 Categoria do material
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 p-1 bg-slate-100 rounded-lg">
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-1.5 p-1 bg-slate-100 rounded-lg">
                 {CATEGORIES.map((cat) => (
                   <button
                     key={cat.id}
@@ -889,6 +966,27 @@ export function ItemFormModal({
             </div>
           )}
 
+          {category === 'outros_materiais' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-3">
+                <label htmlFor="field-outro-nome" className="block text-xs font-medium text-slate-700 mb-1.5">Nome do material *</label>
+                <input id="field-outro-nome" type="text" maxLength={MAX_BITOLA_LENGTH} required value={materialName} onChange={(e) => { setMaterialName(e.target.value); setBitola(e.target.value); }} placeholder="Ex.: Cantoneira, prego, tubo..." className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600" />
+              </div>
+              <div>
+                <label htmlFor="field-outro-quantidade" className="block text-xs font-medium text-slate-700 mb-1.5">Quantidade (opcional)</label>
+                <input id="field-outro-quantidade" type="number" min="0" max={MAX_NUMERIC_VALUE} step="any" value={materialQty} onChange={(e) => setMaterialQty(e.target.value)} placeholder="Deixe vazio se não se aplica" className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600" />
+              </div>
+              <div>
+                <label htmlFor="field-outro-kg-unit" className="block text-xs font-medium text-slate-700 mb-1.5">Kg por unidade (opcional)</label>
+                <input id="field-outro-kg-unit" type="number" min="0" max={MAX_NUMERIC_VALUE} step="0.001" value={kgPorUnidade} onChange={(e) => setKgPorUnidade(e.target.value)} placeholder="Deixe vazio se não se aplica" className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600" />
+              </div>
+              <p className="sm:col-span-3 text-xs text-slate-500">Preencha quantidade, kg por unidade ou os dois. Não podem ficar ambos vazios. Se os dois forem preenchidos, o peso total será calculado automaticamente.</p>
+              {materialQty.trim() && kgPorUnidade.trim() && parseNumericInput(materialQty) > 0 && parseNumericInput(kgPorUnidade) > 0 && (
+                <p className="sm:col-span-3 text-sm font-medium text-slate-700">Peso total calculado: {formatKg(parseNumericInput(materialQty) * parseNumericInput(kgPorUnidade))}</p>
+              )}
+            </div>
+          )}
+
           {category === 'arame' && (
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-2">
@@ -897,7 +995,7 @@ export function ItemFormModal({
               <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-lg">
                 <button
                   type="button"
-                  onClick={() => setWireType('liso')}
+                  onClick={() => { setWireType('liso'); if (bitola === 'BWG 18 (1.24 mm)' || !CATEGORY_MAP.arame.bitolaPresets.includes(bitola)) setBitola(''); }}
                   className={`py-2 px-3 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                     wireType === 'liso'
                       ? 'bg-white text-slate-900 shadow-sm'
@@ -908,7 +1006,7 @@ export function ItemFormModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setWireType('torcido')}
+                  onClick={() => { setWireType('torcido'); setBitola('BWG 18 (1.24 mm)'); setErrorMsg(null); }}
                   className={`py-2 px-3 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                     wireType === 'torcido'
                       ? 'bg-white text-slate-900 shadow-sm'
@@ -921,7 +1019,7 @@ export function ItemFormModal({
             </div>
           )}
 
-          {category === 'tela_pop' ? (() => {
+          {category === 'outros_materiais' ? null : category === 'tela_pop' ? (() => {
             const identifiedTela = resolveTelaPopByCode(bitola);
             const hasCustomEditingBitola =
               Boolean(editingItem?.bitola) &&
@@ -1013,11 +1111,13 @@ export function ItemFormModal({
                 Bitola *
               </label>
               <div className="flex flex-wrap gap-1.5">
-                {(editingItem &&
-                editingItem.bitola &&
-                !activeCategoryMeta.bitolaPresets.includes(editingItem.bitola)
-                  ? [editingItem.bitola, ...activeCategoryMeta.bitolaPresets]
-                  : activeCategoryMeta.bitolaPresets
+                {(category === 'arame' && wireType === 'torcido'
+                  ? ['BWG 18 (1.24 mm)']
+                  : editingItem &&
+                      editingItem.bitola &&
+                      !activeCategoryMeta.bitolaPresets.includes(editingItem.bitola)
+                    ? [editingItem.bitola, ...activeCategoryMeta.bitolaPresets]
+                    : activeCategoryMeta.bitolaPresets
                 ).map((preset) => (
                   <button
                     key={preset}
@@ -1848,22 +1948,24 @@ export function ItemFormModal({
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="field-nota-fiscal" className="block text-xs font-medium text-slate-700 mb-1.5">
-                Nota Fiscal (opcional)
-              </label>
-              <input
-                id="field-nota-fiscal"
-                type="text"
-                maxLength={MAX_NOTA_FISCAL_LENGTH}
-                value={notaFiscal}
-                onChange={(e) => setNotaFiscal(e.target.value)}
-                placeholder="Ex: 12345"
-                className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm text-slate-900 font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
-              />
-            </div>
+            {category !== 'estribo' && (
+              <div>
+                <label htmlFor="field-nota-fiscal" className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Nota Fiscal (opcional)
+                </label>
+                <input
+                  id="field-nota-fiscal"
+                  type="text"
+                  maxLength={MAX_NOTA_FISCAL_LENGTH}
+                  value={notaFiscal}
+                  onChange={(e) => setNotaFiscal(e.target.value)}
+                  placeholder="Ex: 12345"
+                  className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm text-slate-900 font-mono-num focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600"
+                />
+              </div>
+            )}
 
-            <div className="sm:col-span-2">
+            <div className={category === 'estribo' ? 'sm:col-span-3' : 'sm:col-span-2'}>
               <label htmlFor="field-notes" className="block text-xs font-medium text-slate-700 mb-1.5">
                 Observações (opcional)
               </label>

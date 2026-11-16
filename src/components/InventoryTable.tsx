@@ -110,11 +110,10 @@ export function InventoryTable({
             <tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-medium text-slate-500">
               <th className="px-4 py-3">Bitola</th>
               <th className="px-4 py-3">Medida</th>
-              <th className="px-4 py-3 text-right">Qtd. Peças</th>
-              <th className="px-4 py-3 text-right">Qtd. Pacotes</th>
-              <th className="px-4 py-3 text-right">Peso (Kg)</th>
-              <th className="px-4 py-3">Nota Fiscal</th>
-              <th className="px-4 py-3">Observações</th>
+              <th className="px-4 py-3 text-right">Peças</th>
+              <th className="px-4 py-3 text-right">Pacotes</th>
+              <th className="px-4 py-3 text-right">Peso (kg)</th>
+              <th className="px-4 py-3">Obs.</th>
               <th className="px-4 py-3 text-right no-print">Ações</th>
             </tr>
           </thead>
@@ -135,13 +134,6 @@ export function InventoryTable({
                 </td>
                 <td className="px-4 py-2.5 text-right font-mono-num font-medium text-slate-900">
                   {formatKg(item.kg)}
-                </td>
-                <td className="px-4 py-2.5 text-xs font-mono-num whitespace-nowrap">
-                  {item.notaFiscal ? (
-                    <span className="text-slate-800">{item.notaFiscal}</span>
-                  ) : (
-                    <span className="text-slate-400">—</span>
-                  )}
                 </td>
                 <td className="px-4 py-2.5 text-xs text-slate-500 max-w-xs truncate">
                   {item.notes || '—'}
@@ -164,7 +156,6 @@ export function InventoryTable({
               <td className="px-4 py-2.5 text-right font-mono-num">
                 {formatKg(totalKg)}
               </td>
-              <td className="px-4 py-2.5" />
               <td className="px-4 py-2.5" />
               <td className="px-4 py-2.5 no-print" />
             </tr>
@@ -191,11 +182,11 @@ export function InventoryTable({
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-medium text-slate-500">
               <th className="px-4 py-3">Bitola</th>
-              <th className="px-4 py-3 text-right">Unidades</th>
-              <th className="px-4 py-3 text-right">Etiqueta (Kg)</th>
-              <th className="px-4 py-3 text-right">Balança (Kg)</th>
-              <th className="px-4 py-3">Nota Fiscal</th>
-              <th className="px-4 py-3">Observações</th>
+              <th className="px-4 py-3 text-right">Un.</th>
+              <th className="px-4 py-3 text-right">Etiq. (kg)</th>
+              <th className="px-4 py-3 text-right">Bal. (kg)</th>
+              <th className="px-4 py-3">NF</th>
+              <th className="px-4 py-3">Obs.</th>
               <th className="px-4 py-3 text-right no-print">Ações</th>
             </tr>
           </thead>
@@ -265,7 +256,7 @@ export function InventoryTable({
           <tfoot>
             <tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900">
               <td className="px-4 py-2.5">
-                Total ({items.length} {items.length === 1 ? 'bobina' : 'bobinas'})
+                Total ({items.length} bob.)
               </td>
               <td className="px-4 py-2.5 text-right font-mono-num">
                 {formatNumber(totalUn)}
@@ -303,11 +294,11 @@ export function InventoryTable({
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-medium text-slate-500">
               <th className="px-4 py-3">Bitola</th>
-              <th className="px-4 py-3 text-right">Qtd. Barras</th>
-              <th className="px-4 py-3 text-right">Etiqueta (Kg)</th>
-              <th className="px-4 py-3 text-right">Balança (Kg)</th>
-              <th className="px-4 py-3">Nota Fiscal</th>
-              <th className="px-4 py-3">Observações</th>
+              <th className="px-4 py-3 text-right">Barras</th>
+              <th className="px-4 py-3 text-right">Etiq. (kg)</th>
+              <th className="px-4 py-3 text-right">Bal. (kg)</th>
+              <th className="px-4 py-3">NF</th>
+              <th className="px-4 py-3">Obs.</th>
               <th className="px-4 py-3 text-right no-print">Ações</th>
             </tr>
           </thead>
@@ -418,11 +409,11 @@ export function InventoryTable({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-medium text-slate-500">
-              <th className="px-4 py-3">Código / Bitola</th>
-              <th className="px-4 py-3">Tela identificada</th>
-              <th className="px-4 py-3 text-right">Quantidade</th>
-              <th className="px-4 py-3">Nota Fiscal</th>
-              <th className="px-4 py-3">Observações</th>
+              <th className="px-4 py-3">Cód. / Bitola</th>
+              <th className="px-4 py-3">Espec.</th>
+              <th className="px-4 py-3 text-right">Qtd.</th>
+              <th className="px-4 py-3">NF</th>
+              <th className="px-4 py-3">Obs.</th>
               <th className="px-4 py-3 text-right no-print">Ações</th>
             </tr>
           </thead>
@@ -437,13 +428,13 @@ export function InventoryTable({
                   <td className="px-4 py-2.5 text-slate-800 whitespace-nowrap">
                     {telaSpec ? (
                       <div>
-                        <span className="font-medium text-slate-900">{telaSpec.nome}</span>
+                        <span className="font-medium text-slate-900">{telaSpec.shortNome}</span>
                         <span className="text-xs text-slate-500 font-mono-num ml-2">
-                          Malha {telaSpec.malha} · {telaSpec.painel}
+                          {telaSpec.malha} · {telaSpec.painel}
                         </span>
                       </div>
                     ) : (
-                      <span className="text-xs text-slate-400">Código personalizado</span>
+                      <span className="text-xs text-slate-400">Personalizada</span>
                     )}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono-num font-medium text-slate-900">
@@ -467,7 +458,7 @@ export function InventoryTable({
           <tfoot>
             <tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900">
               <td colSpan={2} className="px-4 py-2.5">
-                Total ({items.length} {items.length === 1 ? 'lançamento' : 'lançamentos'})
+                Total ({items.length} reg.)
               </td>
               <td className="px-4 py-2.5 text-right font-mono-num">
                 {formatNumber(totalTelas)} un
@@ -477,6 +468,37 @@ export function InventoryTable({
               <td className="px-4 py-2.5 no-print" />
             </tr>
           </tfoot>
+        </table>
+      </div>
+    );
+  }
+
+  if (activeCategory === 'outros_materiais') {
+    const totalUnits = items.reduce((sum, item) => sum + item.unidades, 0);
+    const totalKg = items.reduce((sum, item) => sum + item.kg, 0);
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead><tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-medium text-slate-500">
+            <th className="px-4 py-3">Material</th><th className="px-4 py-3 text-right">Qtd.</th><th className="px-4 py-3 text-right">Kg/un</th><th className="px-4 py-3 text-right">Peso (kg)</th><th className="px-4 py-3">NF</th><th className="px-4 py-3">Obs.</th><th className="px-4 py-3 text-right no-print">Ações</th>
+          </tr></thead>
+          <tbody className="divide-y divide-slate-200 text-sm">{items.map((item) => (
+            <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+              <td className="px-4 py-2.5 font-medium text-slate-900">{item.materialName || item.bitola}</td>
+              <td className="px-4 py-2.5 text-right font-mono-num">{item.unidades > 0 ? formatNumber(item.unidades) : '—'}</td>
+              <td className="px-4 py-2.5 text-right font-mono-num">{(item.kgPorUnidade ?? 0) > 0 ? `${formatNumber(item.kgPorUnidade ?? 0, 3)} kg` : '—'}</td>
+              <td className="px-4 py-2.5 text-right font-mono-num">{item.kg > 0 ? formatKg(item.kg) : '—'}</td>
+              <td className="px-4 py-2.5 text-xs font-mono-num whitespace-nowrap">
+                {item.notaFiscal ? (
+                  <span className="text-slate-800">{item.notaFiscal}</span>
+                ) : (
+                  <span className="text-slate-400">—</span>
+                )}
+              </td>
+              <td className="px-4 py-2.5 text-xs text-slate-500 max-w-xs truncate">{item.notes || '—'}</td>{renderActionCell(item)}
+            </tr>
+          ))}</tbody>
+          <tfoot><tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900"><td className="px-4 py-2.5">Total ({items.length} mat.)</td><td className="px-4 py-2.5 text-right font-mono-num">{totalUnits > 0 ? formatNumber(totalUnits) : '—'}</td><td className="px-4 py-2.5" /><td className="px-4 py-2.5 text-right font-mono-num">{totalKg > 0 ? formatKg(totalKg) : '—'}</td><td className="px-4 py-2.5" /><td className="px-4 py-2.5" /><td className="px-4 py-2.5 no-print" /></tr></tfoot>
         </table>
       </div>
     );
@@ -503,11 +525,11 @@ export function InventoryTable({
             <tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-medium text-slate-500">
               <th className="px-4 py-3">Tipo</th>
               <th className="px-4 py-3">Bitola</th>
-              <th className="px-4 py-3">Embalagem / Caixas</th>
-              <th className="px-4 py-3 text-right">Unidades</th>
-              <th className="px-4 py-3 text-right">Peso (Kg)</th>
-              <th className="px-4 py-3">Nota Fiscal</th>
-              <th className="px-4 py-3">Observações</th>
+              <th className="px-4 py-3">Emb. / Cx</th>
+              <th className="px-4 py-3 text-right">Un.</th>
+              <th className="px-4 py-3 text-right">Peso (kg)</th>
+              <th className="px-4 py-3">NF</th>
+              <th className="px-4 py-3">Obs.</th>
               <th className="px-4 py-3 text-right no-print">Ações</th>
             </tr>
           </thead>
@@ -520,7 +542,7 @@ export function InventoryTable({
                     {item.wireType === 'liso'
                       ? 'Liso'
                       : item.wireType === 'torcido'
-                        ? 'Torcido'
+                        ? 'Torc.'
                         : '—'}
                   </td>
                   <td className="px-4 py-2.5 font-medium text-slate-900 font-mono-num">
@@ -528,14 +550,14 @@ export function InventoryTable({
                   </td>
                   <td className="px-4 py-2.5 font-mono-num text-slate-700 whitespace-nowrap">
                     {metrics.isVariedCoil
-                      ? 'Bobina (Kg variado)'
+                      ? 'Bob. kg var.'
                       : metrics.unidades > 0
                         ? formatArameBoxes(metrics.unidades)
                         : '—'}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono-num text-slate-800">
                     {metrics.unidades > 0
-                      ? `${formatNumber(metrics.unidades)} ${metrics.isVariedCoil ? (metrics.unidades === 1 ? 'bobina' : 'bobinas') : 'un'}`
+                      ? `${formatNumber(metrics.unidades)} ${metrics.isVariedCoil ? 'bob.' : 'un'}`
                       : '—'}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono-num font-medium text-slate-900">
@@ -573,7 +595,7 @@ export function InventoryTable({
                 {[
                   totalBoxUn > 0 ? `${formatNumber(totalBoxUn)} un` : null,
                   totalCoilUn > 0
-                    ? `${formatNumber(totalCoilUn)} ${totalCoilUn === 1 ? 'bobina' : 'bobinas'}`
+                    ? `${formatNumber(totalCoilUn)} bob.`
                     : null,
                 ]
                   .filter(Boolean)
@@ -598,12 +620,12 @@ export function InventoryTable({
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50/70 text-xs font-medium text-slate-500">
-            <th className="px-4 py-3">Categoria</th>
+            <th className="px-4 py-3">Cat.</th>
             <th className="px-4 py-3">Bitola</th>
-            <th className="px-4 py-3">Quantidades</th>
-            <th className="px-4 py-3 text-right">Peso / Balança (Kg)</th>
-            <th className="px-4 py-3">Nota Fiscal</th>
-            <th className="px-4 py-3">Detalhes</th>
+            <th className="px-4 py-3">Qtd.</th>
+            <th className="px-4 py-3 text-right">Peso / Bal. (kg)</th>
+            <th className="px-4 py-3">NF</th>
+            <th className="px-4 py-3">Obs. / Det.</th>
             <th className="px-4 py-3 text-right no-print">Ações</th>
           </tr>
         </thead>
@@ -617,16 +639,18 @@ export function InventoryTable({
             } else if (item.category === 'bobina') {
               qtySummary = `${formatNumber(item.unidades)} un`;
             } else if (item.category === 'barra') {
-              qtySummary = item.qtdBarras > 0 ? `${formatNumber(item.qtdBarras)} barras` : 'Por peso';
+              qtySummary = item.qtdBarras > 0 ? `${formatNumber(item.qtdBarras)} br` : 'Peso';
             } else if (item.category === 'tela_pop') {
-              qtySummary = `${formatNumber(item.unidades)} telas`;
+              qtySummary = `${formatNumber(item.unidades)} un`;
+            } else if (item.category === 'outros_materiais') {
+              qtySummary = [item.unidades > 0 ? `${formatNumber(item.unidades)} un` : '', (item.kgPorUnidade ?? 0) > 0 ? `${formatNumber(item.kgPorUnidade ?? 0, 3)} kg/un` : '', item.kg > 0 ? formatKg(item.kg) : ''].filter(Boolean).join(' · ') || '—';
             } else if (item.category === 'arame') {
               const metrics = getArameMetrics(item.unidades, item.kg, item.measurementMode);
               if (metrics.isVariedCoil) {
                 qtySummary =
                   metrics.unidades > 0
-                    ? `${formatNumber(metrics.unidades)} ${metrics.unidades === 1 ? 'bobina' : 'bobinas'}`
-                    : 'Bobina';
+                    ? `${formatNumber(metrics.unidades)} bob.`
+                    : 'Bob.';
               } else {
                 qtySummary =
                   metrics.unidades > 0
@@ -637,16 +661,16 @@ export function InventoryTable({
 
             let detailText = item.notes || '';
             if (item.category === 'estribo' && item.medida) {
-              const medidaText = `Medida: ${item.medida}`;
+              const medidaText = `Med.: ${item.medida}`;
               detailText = detailText ? `${medidaText} · ${detailText}` : medidaText;
             } else if (item.category === 'bobina') {
               const sourceText =
                 item.hasLabel && item.hasScaleWeight
-                  ? 'Etiqueta + Balança Kg'
+                  ? 'Etiq. + Bal.'
                   : item.hasScaleWeight
-                    ? 'Balança Kg'
+                    ? 'Bal. (kg)'
                     : item.hasLabel
-                      ? 'Etiqueta'
+                      ? 'Etiq.'
                       : '';
               if (sourceText) {
                 detailText = detailText ? `${sourceText} · ${detailText}` : sourceText;
@@ -654,20 +678,20 @@ export function InventoryTable({
             } else if (item.category === 'arame') {
               const wireText =
                 item.measurementMode === 'kg'
-                  ? `${item.wireType === 'liso' ? 'Arame Liso' : 'Arame Torcido'} · Bobina (Kg variado)`
+                  ? `${item.wireType === 'liso' ? 'Liso' : 'Torc.'} · Bob. kg var.`
                   : item.wireType === 'liso'
-                    ? 'Arame Liso'
-                    : 'Arame Torcido';
+                    ? 'Liso'
+                    : 'Torc.';
               detailText = detailText ? `${wireText} · ${detailText}` : wireText;
             } else if (item.category === 'barra') {
               const hasEtiqueta = item.hasLabel || (!item.hasScaleWeight && item.kg > 0);
               const sourceParts: string[] = [];
               if (hasEtiqueta && item.hasScaleWeight) {
-                sourceParts.push('Etiqueta + Balança Kg');
+                sourceParts.push('Etiq. + Bal.');
               } else if (item.hasScaleWeight) {
-                sourceParts.push('Balança Kg');
+                sourceParts.push('Bal. (kg)');
               } else if (hasEtiqueta) {
-                sourceParts.push('Etiqueta');
+                sourceParts.push('Etiq.');
               }
               if (item.labelCode) {
                 sourceParts.push(`Cód.: ${item.labelCode}`);
@@ -679,7 +703,7 @@ export function InventoryTable({
             } else if (item.category === 'tela_pop') {
               const telaSpec = resolveTelaPopByCode(item.bitola);
               if (telaSpec) {
-                const telaInfo = `${telaSpec.nome} · Malha ${telaSpec.malha}`;
+                const telaInfo = `${telaSpec.shortNome} · ${telaSpec.malha}`;
                 detailText = detailText ? `${telaInfo} · ${detailText}` : telaInfo;
               }
             }
@@ -698,10 +722,10 @@ export function InventoryTable({
             return (
               <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                 <td className="px-4 py-2.5 font-medium text-slate-900 whitespace-nowrap">
-                  {catMeta.label}
+                  {catMeta.shortLabel}
                 </td>
                 <td className="px-4 py-2.5 font-mono-num text-slate-800 whitespace-nowrap">
-                  {item.bitola}
+                  {item.category === 'outros_materiais' ? (item.materialName || item.bitola) : item.bitola}
                 </td>
                 <td className="px-4 py-2.5 font-mono-num text-slate-700 whitespace-nowrap">
                   {qtySummary}
@@ -725,7 +749,7 @@ export function InventoryTable({
                           }
                         >
                           {dualEtiquetaKg > 0
-                            ? `Balança: ${formatKg(item.scaleWeightKg)}`
+                            ? `Bal.: ${formatKg(item.scaleWeightKg)}`
                             : formatKg(item.scaleWeightKg)}
                         </span>
                       )}
@@ -738,7 +762,7 @@ export function InventoryTable({
                   )}
                 </td>
                 <td className="px-4 py-2.5 text-xs font-mono-num whitespace-nowrap">
-                  {item.notaFiscal ? (
+                  {item.category !== 'estribo' && item.notaFiscal ? (
                     <span className="text-slate-800">{item.notaFiscal}</span>
                   ) : (
                     <span className="text-slate-400">—</span>

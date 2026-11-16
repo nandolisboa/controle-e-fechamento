@@ -28,6 +28,12 @@ export function ConsolidatedSummary({
   const [expanded, setExpanded] = useState(true);
 
   const summary = useMemo(() => consolidateInventoryItems(items), [items]);
+  const outrosMateriais = useMemo(
+    () => items.filter((item) => item.category === 'outros_materiais'),
+    [items]
+  );
+  const outrosMateriaisTotalUn = outrosMateriais.reduce((sum, item) => sum + item.unidades, 0);
+  const outrosMateriaisTotalKg = outrosMateriais.reduce((sum, item) => sum + item.kg, 0);
 
   const estriboByMedidaOnly = useMemo(() => {
     if (estriboMode !== 'medida') return [];
@@ -96,23 +102,28 @@ export function ConsolidatedSummary({
   const showArame =
     (activeCategory === 'all' || activeCategory === 'arame') &&
     summary.arames.length > 0;
+  const showOutrosMateriais =
+    (activeCategory === 'all' || activeCategory === 'outros_materiais') &&
+    outrosMateriais.length > 0;
 
-  if (!showEstribo && !showBobina && !showBarra && !showTela && !showArame) {
+  if (!showEstribo && !showBobina && !showBarra && !showTela && !showArame && !showOutrosMateriais) {
     return null;
   }
 
   const headerTitle =
     activeCategory === 'estribo'
-      ? 'Soma de Estribos por Bitola e Medida'
+      ? 'Resumo — Estribos'
       : activeCategory === 'bobina'
-        ? 'Soma de Bobinas por Bitola'
+        ? 'Resumo — Bobinas'
         : activeCategory === 'barra'
-          ? 'Soma de Barras por Bitola'
+          ? 'Resumo — Barras'
           : activeCategory === 'tela_pop'
-            ? 'Soma de Telas Pop por Código'
+            ? 'Resumo — Telas Pop'
             : activeCategory === 'arame'
-              ? 'Soma de Arames por Tipo e Bitola'
-              : 'Soma Consolidada por Compatibilidade';
+              ? 'Resumo — Arames'
+              : activeCategory === 'outros_materiais'
+                ? 'Resumo — Outros'
+                : 'Resumo Consolidado';
 
   const headerSubtitle =
     activeCategory === 'all'
@@ -121,10 +132,10 @@ export function ConsolidatedSummary({
             ? `Peso: ${formatKg(summary.totalSemBalancaKg)}`
             : null,
           summary.totalBalancaKg > 0
-            ? `Balança: ${formatKg(summary.totalBalancaKg)}`
+            ? `Bal.: ${formatKg(summary.totalBalancaKg)}`
             : null,
-          summary.telaTotalUn > 0 ? `${formatNumber(summary.telaTotalUn)} telas pop` : null,
-          `${formatNumber(items.length)} ${items.length === 1 ? 'lançamento' : 'lançamentos'}`,
+          summary.telaTotalUn > 0 ? `${formatNumber(summary.telaTotalUn)} telas` : null,
+          `${formatNumber(items.length)} lanç.`,
         ]
           .filter(Boolean)
           .join(' · ')
@@ -134,27 +145,29 @@ export function ConsolidatedSummary({
           ? [
               `${formatNumber(summary.bobinaTotalUn)} un`,
               summary.bobinaTotalEtiquetaKg > 0
-                ? `Etiqueta: ${formatKg(summary.bobinaTotalEtiquetaKg)}`
+                ? `Etiq.: ${formatKg(summary.bobinaTotalEtiquetaKg)}`
                 : null,
               summary.bobinaTotalBalancaKg > 0
-                ? `Balança: ${formatKg(summary.bobinaTotalBalancaKg)}`
+                ? `Bal.: ${formatKg(summary.bobinaTotalBalancaKg)}`
                 : null,
             ]
               .filter(Boolean)
               .join(' · ')
           : activeCategory === 'barra'
             ? [
-                summary.barraTotalQtd > 0 ? `${formatNumber(summary.barraTotalQtd)} barras` : null,
-                summary.barraTotalKg > 0 ? `Etiqueta: ${formatKg(summary.barraTotalKg)}` : null,
+                summary.barraTotalQtd > 0 ? `${formatNumber(summary.barraTotalQtd)} br` : null,
+                summary.barraTotalKg > 0 ? `Etiq.: ${formatKg(summary.barraTotalKg)}` : null,
                 summary.barraTotalBalanca > 0
-                  ? `Balança: ${formatKg(summary.barraTotalBalanca)}`
+                  ? `Bal.: ${formatKg(summary.barraTotalBalanca)}`
                   : null,
               ]
                 .filter(Boolean)
                 .join(' · ')
             : activeCategory === 'tela_pop'
-              ? `${formatNumber(summary.telaTotalUn)} telas (${summary.telas.length} ${summary.telas.length === 1 ? 'tipo' : 'tipos'})`
-              : `${formatKg(summary.arameTotalKg)} · ${formatNumber(summary.arameTotalLancamentos)} ${summary.arameTotalLancamentos === 1 ? 'lançamento' : 'lançamentos'}`;
+              ? `${formatNumber(summary.telaTotalUn)} un (${summary.telas.length} tipos)`
+              : activeCategory === 'arame'
+                ? `${formatKg(summary.arameTotalKg)} · ${formatNumber(summary.arameTotalLancamentos)} lanç.`
+                : `${outrosMateriais.length} mat.${outrosMateriaisTotalUn > 0 ? ` · ${formatNumber(outrosMateriaisTotalUn)} un` : ''}${outrosMateriaisTotalKg > 0 ? ` · ${formatKg(outrosMateriaisTotalKg)}` : ''}`;
 
   return (
     <section
@@ -189,7 +202,7 @@ export function ConsolidatedSummary({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Por Bitola e Medida
+                Bitola + Med.
               </button>
               <button
                 type="button"
@@ -200,7 +213,7 @@ export function ConsolidatedSummary({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Por Medida
+                Por Med.
               </button>
             </div>
           )}
@@ -250,7 +263,7 @@ export function ConsolidatedSummary({
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        Bitola + Medida
+                        Bitola + Med.
                       </button>
                       <button
                         type="button"
@@ -261,7 +274,7 @@ export function ConsolidatedSummary({
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        Só Medida
+                        Só Med.
                       </button>
                     </div>
                   </div>
@@ -283,10 +296,10 @@ export function ConsolidatedSummary({
                           <th className="py-2 px-4">Bitola(s)</th>
                         </>
                       )}
-                      <th className="py-2 px-4 text-right">Lançamentos</th>
-                      <th className="py-2 px-4 text-right">Qtd. Peças</th>
-                      <th className="py-2 px-4 text-right">Qtd. Pacotes</th>
-                      <th className="py-2 px-4 text-right">Peso (Kg)</th>
+                      <th className="py-2 px-4 text-right">Lanç.</th>
+                      <th className="py-2 px-4 text-right">Peças</th>
+                      <th className="py-2 px-4 text-right">Pacotes</th>
+                      <th className="py-2 px-4 text-right">Peso (kg)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-sm">
@@ -355,7 +368,7 @@ export function ConsolidatedSummary({
                   <tfoot>
                     <tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900">
                       <td colSpan={2} className="py-2 px-4">
-                        Total Estribos
+                        Total
                       </td>
                       <td className="py-2 px-4 text-right font-mono-num">
                         {formatNumber(summary.estriboTotalLancamentos)}
@@ -388,10 +401,10 @@ export function ConsolidatedSummary({
                     {[
                       `${formatNumber(summary.bobinaTotalUn)} un`,
                       summary.bobinaTotalEtiquetaKg > 0
-                        ? `Etiqueta: ${formatKg(summary.bobinaTotalEtiquetaKg)}`
+                        ? `Etiq.: ${formatKg(summary.bobinaTotalEtiquetaKg)}`
                         : null,
                       summary.bobinaTotalBalancaKg > 0
-                        ? `Balança: ${formatKg(summary.bobinaTotalBalancaKg)}`
+                        ? `Bal.: ${formatKg(summary.bobinaTotalBalancaKg)}`
                         : null,
                     ]
                       .filter(Boolean)
@@ -405,10 +418,10 @@ export function ConsolidatedSummary({
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                       <th className="py-2 px-4">Bitola</th>
-                      <th className="py-2 px-4 text-right">Lançamentos</th>
-                      <th className="py-2 px-4 text-right">Unidades</th>
-                      <th className="py-2 px-4 text-right">Etiqueta (Kg)</th>
-                      <th className="py-2 px-4 text-right">Balança (Kg)</th>
+                      <th className="py-2 px-4 text-right">Lanç.</th>
+                      <th className="py-2 px-4 text-right">Un.</th>
+                      <th className="py-2 px-4 text-right">Etiq. (kg)</th>
+                      <th className="py-2 px-4 text-right">Bal. (kg)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-sm">
@@ -434,7 +447,7 @@ export function ConsolidatedSummary({
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900">
-                      <td className="py-2 px-4">Total Bobinas</td>
+                      <td className="py-2 px-4">Total</td>
                       <td className="py-2 px-4 text-right font-mono-num">
                         {formatNumber(summary.bobinaTotalLancamentos)}
                       </td>
@@ -468,10 +481,10 @@ export function ConsolidatedSummary({
                   </span>
                   <span className="text-xs text-slate-500 font-mono-num">
                     {[
-                      summary.barraTotalQtd > 0 ? `${formatNumber(summary.barraTotalQtd)} barras` : null,
-                      summary.barraTotalKg > 0 ? `Etiqueta: ${formatKg(summary.barraTotalKg)}` : null,
+                      summary.barraTotalQtd > 0 ? `${formatNumber(summary.barraTotalQtd)} br` : null,
+                      summary.barraTotalKg > 0 ? `Etiq.: ${formatKg(summary.barraTotalKg)}` : null,
                       summary.barraTotalBalanca > 0
-                        ? `Balança: ${formatKg(summary.barraTotalBalanca)}`
+                        ? `Bal.: ${formatKg(summary.barraTotalBalanca)}`
                         : null,
                     ]
                       .filter(Boolean)
@@ -485,10 +498,10 @@ export function ConsolidatedSummary({
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                       <th className="py-2 px-4">Bitola</th>
-                      <th className="py-2 px-4 text-right">Lançamentos</th>
-                      <th className="py-2 px-4 text-right">Qtd. Barras</th>
-                      <th className="py-2 px-4 text-right">Etiqueta (Kg)</th>
-                      <th className="py-2 px-4 text-right">Balança (Kg)</th>
+                      <th className="py-2 px-4 text-right">Lanç.</th>
+                      <th className="py-2 px-4 text-right">Barras</th>
+                      <th className="py-2 px-4 text-right">Etiq. (kg)</th>
+                      <th className="py-2 px-4 text-right">Bal. (kg)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-sm">
@@ -514,7 +527,7 @@ export function ConsolidatedSummary({
                   </tbody>
                   <tfoot>
                     <tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900">
-                      <td className="py-2 px-4">Total Barras</td>
+                      <td className="py-2 px-4">Total</td>
                       <td className="py-2 px-4 text-right font-mono-num">
                         {formatNumber(summary.barraTotalLancamentos)}
                       </td>
@@ -543,7 +556,7 @@ export function ConsolidatedSummary({
                     Telas Pop
                   </span>
                   <span className="text-xs text-slate-500 font-mono-num">
-                    {formatNumber(summary.telaTotalUn)} telas
+                    {formatNumber(summary.telaTotalUn)} un
                   </span>
                 </div>
               )}
@@ -552,10 +565,10 @@ export function ConsolidatedSummary({
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                      <th className="py-2 px-4">Código / Fio</th>
-                      <th className="py-2 px-4">Especificação</th>
-                      <th className="py-2 px-4 text-right">Lançamentos</th>
-                      <th className="py-2 px-4 text-right">Quantidade Total</th>
+                      <th className="py-2 px-4">Cód. / Fio</th>
+                      <th className="py-2 px-4">Espec.</th>
+                      <th className="py-2 px-4 text-right">Lanç.</th>
+                      <th className="py-2 px-4 text-right">Qtd.</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-sm">
@@ -579,7 +592,7 @@ export function ConsolidatedSummary({
                   <tfoot>
                     <tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900">
                       <td colSpan={2} className="py-2 px-4">
-                        Total Telas Pop
+                        Total
                       </td>
                       <td className="py-2 px-4 text-right font-mono-num">
                         {formatNumber(summary.telaTotalLancamentos)}
@@ -613,10 +626,10 @@ export function ConsolidatedSummary({
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                       <th className="py-2 px-4">Tipo / Bitola</th>
-                      <th className="py-2 px-4">Embalagem Consolidada</th>
-                      <th className="py-2 px-4 text-right">Lançamentos</th>
-                      <th className="py-2 px-4 text-right">Quantidade</th>
-                      <th className="py-2 px-4 text-right">Peso Total (Kg)</th>
+                      <th className="py-2 px-4">Emb.</th>
+                      <th className="py-2 px-4 text-right">Lanç.</th>
+                      <th className="py-2 px-4 text-right">Qtd.</th>
+                      <th className="py-2 px-4 text-right">Peso (kg)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-sm">
@@ -627,7 +640,7 @@ export function ConsolidatedSummary({
                         </td>
                         <td className="py-2 px-4 font-mono-num text-slate-700 whitespace-nowrap">
                           {row.isVariedCoil
-                            ? 'Bobina (Kg variado)'
+                            ? 'Bob. kg var.'
                             : formatArameBoxes(row.unidades)}
                         </td>
                         <td className="py-2 px-4 text-right font-mono-num text-slate-600 whitespace-nowrap">
@@ -635,11 +648,7 @@ export function ConsolidatedSummary({
                         </td>
                         <td className="py-2 px-4 text-right font-mono-num font-medium text-slate-900 whitespace-nowrap">
                           {formatNumber(row.unidades)}{' '}
-                          {row.isVariedCoil
-                            ? row.unidades === 1
-                              ? 'bobina'
-                              : 'bobinas'
-                            : 'un'}
+                          {row.isVariedCoil ? 'bob.' : 'un'}
                         </td>
                         <td className="py-2 px-4 text-right font-mono-num font-semibold text-slate-900 whitespace-nowrap">
                           {formatKg(row.kg)}
@@ -650,7 +659,7 @@ export function ConsolidatedSummary({
                   <tfoot>
                     <tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900">
                       <td colSpan={2} className="py-2 px-4">
-                        Total Arames
+                        Total
                       </td>
                       <td className="py-2 px-4 text-right font-mono-num">
                         {formatNumber(summary.arameTotalLancamentos)}
@@ -661,7 +670,7 @@ export function ConsolidatedSummary({
                             ? `${formatNumber(summary.arameTotalBoxUn)} un`
                             : null,
                           summary.arameTotalCoilUn > 0
-                            ? `${formatNumber(summary.arameTotalCoilUn)} ${summary.arameTotalCoilUn === 1 ? 'bobina' : 'bobinas'}`
+                            ? `${formatNumber(summary.arameTotalCoilUn)} bob.`
                             : null,
                         ]
                           .filter(Boolean)
@@ -677,18 +686,55 @@ export function ConsolidatedSummary({
             </div>
           )}
 
+          {/* Outros materiais */}
+          {showOutrosMateriais && (
+            <div>
+              {activeCategory === 'all' && (
+                <div className="px-4 py-2 bg-slate-50/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-700">Outros</span>
+                  <span className="text-xs text-slate-500 font-mono-num">
+                    {outrosMateriais.length} mat.
+                    {outrosMateriaisTotalUn > 0 ? ` · ${formatNumber(outrosMateriaisTotalUn)} un` : ''}
+                    {outrosMateriaisTotalKg > 0 ? ` · ${formatKg(outrosMateriaisTotalKg)}` : ''}
+                  </span>
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead><tr className="border-b border-slate-200 bg-slate-50/50 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    <th className="py-2 px-4">Material</th><th className="py-2 px-4 text-right">Lanç.</th><th className="py-2 px-4 text-right">Qtd.</th><th className="py-2 px-4 text-right">Kg/un</th><th className="py-2 px-4 text-right">Peso (kg)</th>
+                  </tr></thead>
+                  <tbody className="divide-y divide-slate-200 text-sm">
+                    {outrosMateriais.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-2 px-4 font-semibold text-slate-900">{item.materialName || item.bitola}</td>
+                        <td className="py-2 px-4 text-right font-mono-num text-slate-600">1</td>
+                        <td className="py-2 px-4 text-right font-mono-num">{item.unidades > 0 ? formatNumber(item.unidades) : '—'}</td>
+                        <td className="py-2 px-4 text-right font-mono-num">{(item.kgPorUnidade ?? 0) > 0 ? `${formatNumber(item.kgPorUnidade ?? 0, 3)} kg` : '—'}</td>
+                        <td className="py-2 px-4 text-right font-mono-num font-semibold">{item.kg > 0 ? formatKg(item.kg) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot><tr className="border-t border-slate-300 bg-slate-50/80 text-xs font-semibold text-slate-900">
+                    <td className="py-2 px-4">Total</td><td className="py-2 px-4 text-right font-mono-num">{outrosMateriais.length}</td><td className="py-2 px-4 text-right font-mono-num">{outrosMateriaisTotalUn > 0 ? formatNumber(outrosMateriaisTotalUn) : '—'}</td><td /><td className="py-2 px-4 text-right font-mono-num">{outrosMateriaisTotalKg > 0 ? formatKg(outrosMateriaisTotalKg) : '—'}</td>
+                  </tr></tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Separated Grand Totals Bar when viewing all categories */}
           {activeCategory === 'all' &&
             (summary.totalSemBalancaKg > 0 || summary.totalBalancaKg > 0) && (
               <div className="px-4 sm:px-5 py-3 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-4 text-xs">
                 <span className="font-semibold uppercase tracking-wider">
-                  Totais Consolidados
+                  Totais
                 </span>
                 <div className="flex flex-wrap items-center gap-5 font-mono-num">
                   {summary.totalSemBalancaKg > 0 && (
                     <div>
                       <span className="text-slate-400 mr-1.5">
-                        Peso (Estribo · Arame · Etiqueta/Lote):
+                        Etiq./Lote:
                       </span>
                       <span className="text-sm font-bold text-white">
                         {formatKg(summary.totalSemBalancaKg)}
@@ -698,7 +744,7 @@ export function ConsolidatedSummary({
                   {summary.totalBalancaKg > 0 && (
                     <div>
                       <span className="text-orange-300 mr-1.5">
-                        Balança (Bobinas · Barras):
+                        Bal.:
                       </span>
                       <span className="text-sm font-bold text-orange-300">
                         {formatKg(summary.totalBalancaKg)}
