@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { ConsolidatedSummary } from './components/ConsolidatedSummary';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ExcelPreviewModal } from './components/ExcelPreviewModal';
 import { AuthGate } from './components/AuthGate';
 import { InventoryTable } from './components/InventoryTable';
 import { ItemFormModal } from './components/ItemFormModal';
@@ -84,6 +85,10 @@ function Workspace() {
   const [bobinaFilter, setBobinaFilter] = useState<'all' | 'etiqueta' | 'balanca' | 'ambos'>('all');
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [responsavelPromptOpen, setResponsavelPromptOpen] = useState(false);
+  const [responsavelDraft, setResponsavelDraft] = useState('');
+  const [responsavelAtivo, setResponsavelAtivo] = useState('');
+  const [excelPreviewOpen, setExcelPreviewOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
@@ -168,6 +173,10 @@ function Workspace() {
             monthKey: String(d.monthKey ?? ''),
             category: d.category as MaterialCategory,
             bitola: String(d.bitola ?? ''),
+            materialName: String(d.materialName ?? ''),
+            kgPorUnidade: Number(d.kgPorUnidade ?? 0),
+            conferentes: Array.isArray(d.conferentes) ? d.conferentes.map(String) : [],
+            temConferenciaSemNome: Boolean(d.temConferenciaSemNome),
             medida: String(d.medida ?? ''),
             qtdPecas: Number(d.qtdPecas ?? 0),
             qtdPacotes: Number(d.qtdPacotes ?? 0),
@@ -232,6 +241,7 @@ function Workspace() {
       barra: 0,
       tela_pop: 0,
       arame: 0,
+      outros_materiais: 0,
     };
     for (const item of monthItems) {
       counts[item.category] += 1;
@@ -261,6 +271,7 @@ function Workspace() {
       }
       if (term) {
         const matchBitola = item.bitola.toLowerCase().includes(term);
+        const matchMaterialName = (item.materialName ?? '').toLowerCase().includes(term);
         const matchMedida = item.medida.toLowerCase().includes(term);
         const matchLabel = item.labelCode.toLowerCase().includes(term);
         const matchNf = (item.notaFiscal ?? '').toLowerCase().includes(term);
@@ -271,6 +282,7 @@ function Workspace() {
           (item.hasScaleWeight && ('balanca'.includes(term) || 'balança'.includes(term)));
         return (
           matchBitola ||
+          matchMaterialName ||
           matchMedida ||
           matchLabel ||
           matchNf ||
@@ -320,7 +332,8 @@ function Workspace() {
         saveLocalItems(nextItems);
         setActionFeedback('Item atualizado no estoque.');
       } else {
-        const created = createLocalItemRecord(selectedMonth, payload);
+        const resp = responsavelAtivo.trim();
+        const created = { ...createLocalItemRecord(selectedMonth, payload), conferentes: resp ? [resp] : [] };
         const { items: consolidated, changed } = consolidateEstriboItems([
           ...allItems,
           created,
@@ -344,7 +357,7 @@ function Workspace() {
       await createInventoryItem(
         user.uid,
         selectedMonth,
-        payload,
+        { ...payload, conferentes: responsavelAtivo.trim() ? [responsavelAtivo.trim()] : [] },
         Boolean(currentMonthRecord),
         monthItems
       );
@@ -356,9 +369,11 @@ function Workspace() {
     if (payloads.length === 0) return;
     setActionError(null);
     if (!user) {
-      const createdList = payloads.map((payload) =>
-        createLocalItemRecord(selectedMonth, payload)
-      );
+      const resp = responsavelAtivo.trim();
+      const createdList = payloads.map((payload) => ({
+        ...createLocalItemRecord(selectedMonth, payload),
+        conferentes: resp ? [resp] : [],
+      }));
       const { items: consolidated } = consolidateEstriboItems([
         ...allItems,
         ...createdList,
@@ -377,7 +392,10 @@ function Workspace() {
     const count = await createInventoryItemsBatch(
       user.uid,
       selectedMonth,
-      payloads,
+      payloads.map((payload) => ({
+        ...payload,
+        conferentes: responsavelAtivo.trim() ? [responsavelAtivo.trim()] : [],
+      })),
       Boolean(currentMonthRecord),
       monthItems
     );
@@ -536,6 +554,15 @@ function Workspace() {
     if (defaultCat) {
       setActiveCategory(defaultCat);
     }
+    setResponsavelDraft(responsavelAtivo);
+    setResponsavelPromptOpen(true);
+  }
+
+  function confirmResponsavelAndContinue() {
+    const name = responsavelDraft.trim();
+    if (!name) return;
+    setResponsavelAtivo(name);
+    setResponsavelPromptOpen(false);
     setModalOpen(true);
   }
 
@@ -758,6 +785,15 @@ function Workspace() {
             >
               <LogOut className="w-4 h-4" />
               <span>Sair</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setExcelPreviewOpen(true)}
+              disabled={monthItems.length === 0}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 text-xs font-medium text-slate-700 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Exportar Excel</span>
             </button>
             <button
               type="button"
@@ -1220,6 +1256,21 @@ function Workspace() {
         </main>
       </div>
 
+      {responsavelPromptOpen && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/60 flex items-center justify-center p-4 no-print" role="dialog" aria-modal="true" aria-labelledby="responsavel-title">
+          <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-6">
+            <h2 id="responsavel-title" className="text-lg font-semibold text-slate-900">Responsável pela conferência</h2>
+            <p className="mt-2 text-sm text-slate-600">Informe quem está conferindo os lançamentos.</p>
+            <label htmlFor="responsavel-conferencia" className="block mt-4 text-xs font-medium text-slate-700 mb-1.5">Nome do responsável *</label>
+            <input id="responsavel-conferencia" autoFocus maxLength={80} value={responsavelDraft} onChange={(e) => setResponsavelDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') confirmResponsavelAndContinue(); if (e.key === 'Escape') setResponsavelPromptOpen(false); }} placeholder="Digite o nome" className="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-600/20 focus:border-orange-600" />
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setResponsavelPromptOpen(false)} className="h-9 px-4 rounded-lg border border-slate-200 text-sm text-slate-700">Cancelar</button>
+              <button type="button" disabled={!responsavelDraft.trim()} onClick={confirmResponsavelAndContinue} className="h-9 px-4 rounded-lg bg-slate-900 text-sm font-medium text-white disabled:opacity-40">Continuar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add / Edit Modal */}
       <ItemFormModal
         isOpen={modalOpen}
@@ -1244,6 +1295,16 @@ function Workspace() {
       allMonthItems={monthItems}
       filteredItems={filteredItems}
       hasActiveFilters={hasActiveFilters}
+    />
+    <ExcelPreviewModal
+      isOpen={excelPreviewOpen}
+      onClose={() => setExcelPreviewOpen(false)}
+      monthKey={selectedMonth}
+      activeCategory={activeCategory}
+      allMonthItems={monthItems}
+      filteredItems={filteredItems}
+      hasActiveFilters={hasActiveFilters}
+      onExportError={(msg) => setActionError(msg)}
     />
     </>
   );
