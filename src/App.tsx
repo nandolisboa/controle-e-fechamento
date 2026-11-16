@@ -168,6 +168,8 @@ function Workspace() {
             monthKey: String(d.monthKey ?? ''),
             category: d.category as MaterialCategory,
             bitola: String(d.bitola ?? ''),
+            materialName: String(d.materialName ?? ''),
+            kgPorUnidade: Number(d.kgPorUnidade ?? 0),
             medida: String(d.medida ?? ''),
             qtdPecas: Number(d.qtdPecas ?? 0),
             qtdPacotes: Number(d.qtdPacotes ?? 0),
@@ -232,6 +234,7 @@ function Workspace() {
       barra: 0,
       tela_pop: 0,
       arame: 0,
+      outros_materiais: 0,
     };
     for (const item of monthItems) {
       counts[item.category] += 1;
@@ -261,6 +264,7 @@ function Workspace() {
       }
       if (term) {
         const matchBitola = item.bitola.toLowerCase().includes(term);
+        const matchMaterialName = (item.materialName ?? '').toLowerCase().includes(term);
         const matchMedida = item.medida.toLowerCase().includes(term);
         const matchLabel = item.labelCode.toLowerCase().includes(term);
         const matchNf = (item.notaFiscal ?? '').toLowerCase().includes(term);
@@ -271,6 +275,7 @@ function Workspace() {
           (item.hasScaleWeight && ('balanca'.includes(term) || 'balança'.includes(term)));
         return (
           matchBitola ||
+          matchMaterialName ||
           matchMedida ||
           matchLabel ||
           matchNf ||
