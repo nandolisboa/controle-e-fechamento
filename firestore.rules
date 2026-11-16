@@ -60,7 +60,7 @@ service cloud.firestore {
         'scaleWeightKg', 'wireType', 'notes', 'createdAt', 'updatedAt'
       ]) &&
       data.keys().hasOnly([
-        'ownerId', 'monthDocId', 'monthKey', 'category', 'bitola', 'medida',
+        'ownerId', 'monthDocId', 'monthKey', 'category', 'bitola', 'materialName', 'kgPorUnidade', 'medida',
         'qtdPecas', 'qtdPacotes', 'unidades', 'qtdBarras', 'kg',
         'measurementMode', 'hasLabel', 'labelCode', 'hasScaleWeight',
         'scaleWeightKg', 'wireType', 'notaFiscal', 'notes', 'createdAt', 'updatedAt'
@@ -78,10 +78,12 @@ service cloud.firestore {
       data.monthKey.size() == 7 &&
       data.monthKey.matches('^[0-9]{4}-[0-9]{2}$') &&
       data.category is string &&
-      data.category in ['estribo', 'bobina', 'barra', 'tela_pop', 'arame'] &&
+      data.category in ['estribo', 'bobina', 'barra', 'tela_pop', 'arame', 'outros_materiais'] &&
       data.bitola is string &&
       data.bitola.size() >= 1 &&
       data.bitola.size() <= 60 &&
+      (!('materialName' in data) || (data.materialName is string && data.materialName.size() <= 60)) &&
+      (!('kgPorUnidade' in data) || isNonNegNum(data.kgPorUnidade)) &&
       data.medida is string &&
       data.medida.size() <= 60 &&
       isNonNegNum(data.qtdPecas) &&
@@ -98,6 +100,7 @@ service cloud.firestore {
       isNonNegNum(data.scaleWeightKg) &&
       data.wireType is string &&
       data.wireType in ['none', 'liso', 'torcido'] &&
+      (data.category != 'outros_materiais' || (('materialName' in data && data.materialName.size() >= 1) && (data.unidades > 0 || ('kgPorUnidade' in data && data.kgPorUnidade > 0)))) &&
       (!('notaFiscal' in data) || (data.notaFiscal is string && data.notaFiscal.size() <= 60)) &&
       data.notes is string &&
       data.notes.size() <= 300 &&
@@ -163,7 +166,7 @@ service cloud.firestore {
         get(/databases/$(database)/documents/months/$(existing().monthDocId)).data.isLocked == false &&
         (
           incoming().diff(existing()).affectedKeys().hasOnly([
-            'category', 'bitola', 'medida', 'qtdPecas', 'qtdPacotes', 'unidades',
+            'category', 'bitola', 'materialName', 'kgPorUnidade', 'medida', 'qtdPecas', 'qtdPacotes', 'unidades',
             'qtdBarras', 'kg', 'measurementMode', 'hasLabel', 'labelCode',
             'hasScaleWeight', 'scaleWeightKg', 'wireType', 'notaFiscal', 'notes', 'updatedAt'
           ])
