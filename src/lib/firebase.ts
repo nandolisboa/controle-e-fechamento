@@ -1,7 +1,10 @@
 import { initializeApp } from 'firebase/app';
 import {
+  browserLocalPersistence,
+  browserSessionPersistence,
   getAuth,
   GoogleAuthProvider,
+  setPersistence,
   signInWithPopup,
   signOut,
   type User,
@@ -84,7 +87,8 @@ export async function testFirestoreConnection(): Promise<void> {
   }
 }
 
-export async function signInWithGoogle(): Promise<User> {
+export async function signInWithGoogle(rememberUser = true): Promise<User> {
+  await setPersistence(auth, rememberUser ? browserLocalPersistence : browserSessionPersistence);
   const result = await signInWithPopup(auth, googleProvider);
   return result.user;
 }

@@ -5,13 +5,17 @@ import { signInWithGoogle } from '../lib/firebase';
 export function AuthGate() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [logoError, setLogoError] = useState(false);
+  const [rememberUser, setRememberUser] = useState(() => {
+    try { return window.localStorage.getItem('acogestao_lembrar_usuario') !== 'false'; }
+    catch { return true; }
+  });
 
   async function handleLogin() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      await signInWithGoogle();
+      try { window.localStorage.setItem('acogestao_lembrar_usuario', String(rememberUser)); } catch { /* persistence choice still applies */ }
+      await signInWithGoogle(rememberUser);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Falha ao autenticar com o Google.';
       if (msg.includes('popup-closed-by-user')) {
@@ -39,32 +43,11 @@ export function AuthGate() {
 
       <main className="relative z-10 w-full max-w-[420px]">
         <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_16px_44px_-16px_rgba(15,23,42,0.12)] px-7 py-8 sm:px-9 sm:py-10">
-          {/* Logo Arames Brasil em destaque sobre fundo branco */}
           <div className="flex flex-col items-center text-center">
-            {!logoError ? (
-              <img
-                src={`${import.meta.env.BASE_URL}logo-arames-brasil.jpg`}
-                alt="Arames Brasil — Ferro e Aço para Construção Civil"
-                referrerPolicy="no-referrer"
-                onError={() => setLogoError(true)}
-                className="w-full max-w-[280px] sm:max-w-[300px] h-auto object-contain select-none"
-              />
-            ) : (
-              <div className="py-3 text-center">
-                <span className="font-display text-2xl font-bold tracking-tight text-slate-900">
-                  ARAMES <span className="text-red-600">BRASIL</span>
-                </span>
-              </div>
-            )}
-
+            <div className="py-3 text-center font-display text-2xl font-bold tracking-tight text-slate-900">
+              ARAMES <span className="text-red-600">BRASIL</span>
+            </div>
             <div className="w-12 h-0.5 bg-red-600/80 rounded-full mt-5 mb-5" aria-hidden="true" />
-
-            <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 [text-wrap:balance]">
-              AçoGestão
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Controle de Estoque Mensal
-            </p>
           </div>
 
           <div className="mt-8 space-y-3">
@@ -76,6 +59,11 @@ export function AuthGate() {
                 {errorMsg}
               </div>
             )}
+
+            <label className="flex items-center gap-2.5 px-1 text-sm text-slate-600 cursor-pointer select-none">
+              <input type="checkbox" checked={rememberUser} onChange={(event) => setRememberUser(event.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-red-600 focus:ring-2 focus:ring-red-600/20" />
+              <span>Lembrar usuário</span>
+            </label>
 
             <button
               type="button"
@@ -112,14 +100,8 @@ export function AuthGate() {
 
           </div>
 
-          <p className="mt-6 text-center text-xs text-slate-400 leading-relaxed">
-            Use aramesprojeto@gmail.com para acessar o estoque oficial.
-          </p>
         </div>
 
-        <footer className="mt-5 text-center text-xs text-slate-400">
-          Arames Brasil · Controle de Estoque
-        </footer>
       </main>
     </div>
   );
