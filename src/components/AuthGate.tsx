@@ -6,12 +6,24 @@ export function AuthGate() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
+  const [rememberUser, setRememberUser] = useState(() => {
+    try {
+      return window.localStorage.getItem('acogestao_lembrar_usuario') !== 'false';
+    } catch {
+      return true;
+    }
+  });
 
   async function handleLogin() {
     setLoading(true);
     setErrorMsg(null);
     try {
-      await signInWithGoogle();
+      try {
+        window.localStorage.setItem('acogestao_lembrar_usuario', String(rememberUser));
+      } catch {
+        // The Firebase persistence choice still applies when storage is unavailable.
+      }
+      await signInWithGoogle(rememberUser);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Falha ao autenticar com o Google.';
       if (msg.includes('popup-closed-by-user')) {
@@ -76,6 +88,16 @@ export function AuthGate() {
                 {errorMsg}
               </div>
             )}
+
+            <label className="flex items-center gap-2.5 px-1 text-sm text-slate-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberUser}
+                onChange={(event) => setRememberUser(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 accent-red-600 focus:ring-2 focus:ring-red-600/20"
+              />
+              <span>Lembrar usuário neste dispositivo</span>
+            </label>
 
             <button
               type="button"
