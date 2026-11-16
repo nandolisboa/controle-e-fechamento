@@ -725,13 +725,22 @@ function Workspace() {
       <div className="flex-1 min-w-0 flex flex-col print-full">
         {/* Top Bar */}
         <header className="min-h-16 sm:h-16 bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-0 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 sm:gap-4 no-print">
-          <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-3 min-w-0 w-full sm:w-auto">
             <img
               src={`${import.meta.env.BASE_URL}logo-arames-brasil.jpg`}
               alt="Arames Brasil"
               className="h-9 w-auto max-w-[120px] object-contain shrink-0"
             />
-            <div className="flex items-center gap-2 text-sm min-w-0 truncate">
+            <button
+              type="button"
+              onClick={() => signOutUser()}
+              aria-label="Sair da conta"
+              className="sm:hidden ml-auto inline-flex items-center justify-center gap-1.5 h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-800 whitespace-nowrap shrink-0"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sair</span>
+            </button>
+            <div className="flex items-center gap-2 text-sm min-w-0 truncate w-full sm:w-auto">
               <span className="text-slate-500 hidden sm:inline">Estoque Mensal</span>
               <span className="text-slate-300 hidden sm:inline">/</span>
               <span className="font-medium text-slate-900 whitespace-nowrap">
@@ -752,12 +761,12 @@ function Workspace() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5 w-full sm:w-auto shrink-0">
             <button
               type="button"
               onClick={() => signOutUser()}
               aria-label="Sair da conta"
-              className="inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 whitespace-nowrap"
+              className="hidden sm:inline-flex items-center gap-1.5 h-9 px-2.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-700 whitespace-nowrap"
             >
               <LogOut className="w-4 h-4" />
               <span>Sair</span>
