@@ -6,6 +6,7 @@ import {
   formatArameBoxes,
   formatKg,
   formatMonthLabel,
+  formatMonthShortLabel,
   formatNumber,
   getArameMetrics,
   type InventoryItem,
@@ -60,12 +61,15 @@ export function PrintPreviewModal({
   const effectiveCategory: MaterialCategory | 'all' =
     scope === 'all' ? 'all' : activeCategory;
   const itemsToPrint = scope === 'all' ? allMonthItems : filteredItems;
+  const responsaveis = Array.from(new Set(itemsToPrint.flatMap((item) => item.conferentes ?? []))).filter(Boolean);
+  const faltaResponsavel = itemsToPrint.some((item) => !item.conferentes?.length || item.temConferenciaSemNome);
+  const outrosItems = itemsToPrint.filter((item) => item.category === 'outros_materiais');
 
   const scopeTitle =
     effectiveCategory === 'all'
       ? scope === 'current' && hasActiveFilters
-        ? 'Visão Geral (filtrada)'
-        : 'Inventário Completo do Mês'
+        ? 'Geral (filtrado)'
+        : 'Estoque Completo'
       : CATEGORY_MAP[effectiveCategory].label;
 
   const consolidated = useMemo(
@@ -91,11 +95,10 @@ export function PrintPreviewModal({
       <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0 no-print">
         <div className="min-w-0">
           <h2 id="print-preview-title" className="font-display text-base font-semibold text-slate-900">
-            Visualização do PDF / Impressão
+            Prévia PDF / Impressão
           </h2>
           <p className="text-xs text-slate-500">
-            Formato A4 · {formatMonthLabel(monthKey)} · {itemsToPrint.length}{' '}
-            {itemsToPrint.length === 1 ? 'registro' : 'registros'}
+            A4 · {formatMonthShortLabel(monthKey)} · {itemsToPrint.length} reg.
           </p>
         </div>
 
@@ -110,7 +113,7 @@ export function PrintPreviewModal({
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Simplificado
+              Simplif.
             </button>
             <button
               type="button"
@@ -136,7 +139,7 @@ export function PrintPreviewModal({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Filtro atual ({filteredItems.length})
+                Filtro ({filteredItems.length})
               </button>
               <button
                 type="button"
@@ -147,7 +150,7 @@ export function PrintPreviewModal({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Mês completo ({allMonthItems.length})
+                Mês ({allMonthItems.length})
               </button>
             </div>
           )}
@@ -168,7 +171,7 @@ export function PrintPreviewModal({
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-xs font-medium cursor-pointer whitespace-nowrap"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Imprimir / Salvar PDF</span>
+            <span>Imprimir / PDF</span>
           </button>
         </div>
       </div>
@@ -180,9 +183,11 @@ export function PrintPreviewModal({
             {/* Clean Executive Header */}
             <header className="pb-3.5 border-b border-slate-900 flex flex-col sm:flex-row sm:items-end justify-between gap-2">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                  AçoGestão · Relatório de Estoque
-                </div>
+                <img
+                  src={`${import.meta.env.BASE_URL}logo-arames-brasil.jpg`}
+                  alt="Arames Brasil"
+                  className="h-10 w-auto max-w-[190px] object-contain object-left"
+                />
                 <h1 className="font-display text-xl font-bold text-slate-900 mt-0.5">
                   {formatMonthLabel(monthKey)} — {scopeTitle}
                 </h1>
@@ -215,8 +220,7 @@ export function PrintPreviewModal({
                         Estribo
                       </h2>
                       <span className="text-[11px] font-mono-num text-slate-500">
-                        {consolidated.estribos.length}{' '}
-                        {consolidated.estribos.length === 1 ? 'medida' : 'medidas'}
+                        {consolidated.estribos.length} med.
                       </span>
                     </div>
                     <table className="w-full text-left border-collapse text-xs">
@@ -226,7 +230,7 @@ export function PrintPreviewModal({
                           <th className="py-1.5 px-3 font-medium">Medida</th>
                           <th className="py-1.5 px-3 text-right font-medium">Peças</th>
                           <th className="py-1.5 px-3 text-right font-medium">Pacotes</th>
-                          <th className="py-1.5 pl-3 text-right font-medium">Peso (Kg)</th>
+                          <th className="py-1.5 pl-3 text-right font-medium">Peso (kg)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
@@ -253,7 +257,7 @@ export function PrintPreviewModal({
                       <tfoot>
                         <tr className="border-t border-slate-400 bg-slate-50/70 font-semibold text-slate-900">
                           <td colSpan={2} className="py-1.5 pr-3">
-                            Subtotal Estribo
+                            Subtotal
                           </td>
                           <td className="py-1.5 px-3 text-right font-mono-num">
                             {formatNumber(consolidated.estriboTotalPecas)}
@@ -285,9 +289,9 @@ export function PrintPreviewModal({
                       <thead>
                         <tr className="border-b border-slate-300 text-[11px] text-slate-500">
                           <th className="py-1.5 pr-3 font-medium">Bitola</th>
-                          <th className="py-1.5 px-3 text-right font-medium">Quantidade</th>
-                          <th className="py-1.5 px-3 text-right font-medium">Etiqueta (Kg)</th>
-                          <th className="py-1.5 pl-3 text-right font-medium">Balança (Kg)</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Qtd.</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Etiq. (kg)</th>
+                          <th className="py-1.5 pl-3 text-right font-medium">Bal. (kg)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
@@ -310,7 +314,7 @@ export function PrintPreviewModal({
                       </tbody>
                       <tfoot>
                         <tr className="border-t border-slate-400 bg-slate-50/70 font-semibold text-slate-900">
-                          <td className="py-1.5 pr-3">Subtotal Bobinas</td>
+                          <td className="py-1.5 pr-3">Subtotal</td>
                           <td className="py-1.5 px-3 text-right font-mono-num">
                             {formatNumber(consolidated.bobinaTotalUn)} un
                           </td>
@@ -338,16 +342,16 @@ export function PrintPreviewModal({
                         Barras
                       </h2>
                       <span className="text-[11px] font-mono-num text-slate-500">
-                        {formatNumber(consolidated.barraTotalQtd)} barras
+                        {formatNumber(consolidated.barraTotalQtd)} br
                       </span>
                     </div>
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="border-b border-slate-300 text-[11px] text-slate-500">
                           <th className="py-1.5 pr-3 font-medium">Bitola</th>
-                          <th className="py-1.5 px-3 text-right font-medium">Qtd. Barras</th>
-                          <th className="py-1.5 px-3 text-right font-medium">Etiqueta (Kg)</th>
-                          <th className="py-1.5 pl-3 text-right font-medium">Balança (Kg)</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Barras</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Etiq. (kg)</th>
+                          <th className="py-1.5 pl-3 text-right font-medium">Bal. (kg)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
@@ -370,7 +374,7 @@ export function PrintPreviewModal({
                       </tbody>
                       <tfoot>
                         <tr className="border-t border-slate-400 bg-slate-50/70 font-semibold text-slate-900">
-                          <td className="py-1.5 pr-3">Subtotal Barras</td>
+                          <td className="py-1.5 pr-3">Subtotal</td>
                           <td className="py-1.5 px-3 text-right font-mono-num">
                             {consolidated.barraTotalQtd > 0
                               ? formatNumber(consolidated.barraTotalQtd)
@@ -400,15 +404,15 @@ export function PrintPreviewModal({
                         Telas Pop
                       </h2>
                       <span className="text-[11px] font-mono-num text-slate-500">
-                        {formatNumber(consolidated.telaTotalUn)} telas
+                        {formatNumber(consolidated.telaTotalUn)} un
                       </span>
                     </div>
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="border-b border-slate-300 text-[11px] text-slate-500">
-                          <th className="py-1.5 pr-3 font-medium">Código / Fio</th>
-                          <th className="py-1.5 px-3 font-medium">Especificação</th>
-                          <th className="py-1.5 pl-3 text-right font-medium">Quantidade</th>
+                          <th className="py-1.5 pr-3 font-medium">Cód. / Fio</th>
+                          <th className="py-1.5 px-3 font-medium">Espec.</th>
+                          <th className="py-1.5 pl-3 text-right font-medium">Qtd.</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
@@ -427,7 +431,7 @@ export function PrintPreviewModal({
                       <tfoot>
                         <tr className="border-t border-slate-400 bg-slate-50/70 font-semibold text-slate-900">
                           <td colSpan={2} className="py-1.5 pr-3">
-                            Subtotal Telas Pop
+                            Subtotal
                           </td>
                           <td className="py-1.5 pl-3 text-right font-mono-num">
                             {formatNumber(consolidated.telaTotalUn)} un
@@ -453,9 +457,9 @@ export function PrintPreviewModal({
                       <thead>
                         <tr className="border-b border-slate-300 text-[11px] text-slate-500">
                           <th className="py-1.5 pr-3 font-medium">Tipo / Bitola</th>
-                          <th className="py-1.5 px-3 font-medium">Embalagem</th>
-                          <th className="py-1.5 px-3 text-right font-medium">Quantidade</th>
-                          <th className="py-1.5 pl-3 text-right font-medium">Peso (Kg)</th>
+                          <th className="py-1.5 px-3 font-medium">Emb.</th>
+                          <th className="py-1.5 px-3 text-right font-medium">Qtd.</th>
+                          <th className="py-1.5 pl-3 text-right font-medium">Peso (kg)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
@@ -466,16 +470,12 @@ export function PrintPreviewModal({
                             </td>
                             <td className="py-1.5 px-3 font-mono-num text-slate-700">
                               {row.isVariedCoil
-                                ? 'Bobina (Kg variado)'
+                                ? 'Bob. kg var.'
                                 : formatArameBoxes(row.unidades)}
                             </td>
                             <td className="py-1.5 px-3 text-right font-mono-num text-slate-700">
                               {formatNumber(row.unidades)}{' '}
-                              {row.isVariedCoil
-                                ? row.unidades === 1
-                                  ? 'bobina'
-                                  : 'bobinas'
-                                : 'un'}
+                              {row.isVariedCoil ? 'bob.' : 'un'}
                             </td>
                             <td className="py-1.5 pl-3 text-right font-mono-num font-medium text-slate-900">
                               {formatKg(row.kg)}
@@ -486,7 +486,7 @@ export function PrintPreviewModal({
                       <tfoot>
                         <tr className="border-t border-slate-400 bg-slate-50/70 font-semibold text-slate-900">
                           <td colSpan={3} className="py-1.5 pr-3">
-                            Subtotal Arames
+                            Subtotal
                           </td>
                           <td className="py-1.5 pl-3 text-right font-mono-num">
                             {formatKg(consolidated.arameTotalKg)}
@@ -497,14 +497,24 @@ export function PrintPreviewModal({
                   </section>
                 )}
 
+                {outrosItems.length > 0 && (
+                  <section className="space-y-1.5 break-inside-avoid">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-800 border-b border-slate-300 pb-1">Outros</h2>
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead><tr className="border-b border-slate-300 text-[11px] text-slate-500"><th className="py-1.5 pr-3">Material</th><th className="py-1.5 pr-3">Qtd.</th><th className="py-1.5 pr-3">Kg/un</th><th className="py-1.5 pr-3">NF</th><th className="py-1.5 text-right">Peso</th></tr></thead>
+                      <tbody>{outrosItems.map((item) => <tr key={item.id} className="border-b border-slate-200"><td className="py-1.5 pr-3">{item.materialName || item.bitola}</td><td className="py-1.5 pr-3 font-mono-num">{item.unidades > 0 ? formatNumber(item.unidades) : '—'}</td><td className="py-1.5 pr-3 font-mono-num">{(item.kgPorUnidade ?? 0) > 0 ? `${formatNumber(item.kgPorUnidade ?? 0, 3)} kg` : '—'}</td><td className="py-1.5 pr-3 font-mono-num">{item.notaFiscal || '—'}</td><td className="py-1.5 text-right font-mono-num">{item.kg > 0 ? formatKg(item.kg) : '—'}</td></tr>)}</tbody>
+                    </table>
+                  </section>
+                )}
+
                 {/* Separated Grand Totals */}
                 {(consolidated.totalSemBalancaKg > 0 || consolidated.totalBalancaKg > 0) && (
                   <div className="pt-2.5 border-t-2 border-slate-900 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-900">
-                    <span className="uppercase tracking-wider">Totais Consolidados</span>
+                    <span className="uppercase tracking-wider">Totais</span>
                     <div className="flex flex-wrap items-center gap-5 font-mono-num">
                       {consolidated.totalSemBalancaKg > 0 && (
                         <span>
-                          Peso (Etiqueta / Lote):{' '}
+                          Etiq./Lote:{' '}
                           <span className="text-sm font-bold">
                             {formatKg(consolidated.totalSemBalancaKg)}
                           </span>
@@ -512,7 +522,7 @@ export function PrintPreviewModal({
                       )}
                       {consolidated.totalBalancaKg > 0 && (
                         <span>
-                          Balança:{' '}
+                          Bal.:{' '}
                           <span className="text-sm font-bold">
                             {formatKg(consolidated.totalBalancaKg)}
                           </span>
@@ -526,16 +536,16 @@ export function PrintPreviewModal({
               /* Detalhado View */
               <div className="space-y-2">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                  Relação detalhada de lançamentos
+                  Lançamentos detalhados
                 </h2>
                 <table className="w-full text-left border-collapse border border-slate-300 text-xs">
                   <thead>
                     <tr className="bg-slate-100 border-b border-slate-300 text-slate-700">
-                      <th className="px-2.5 py-2 border-r border-slate-300">Categoria</th>
-                      <th className="px-2.5 py-2 border-r border-slate-300">Bitola / Código</th>
-                      <th className="px-2.5 py-2 border-r border-slate-300">Quantidades</th>
-                      <th className="px-2.5 py-2 text-right border-r border-slate-300">Peso / Balança</th>
-                      <th className="px-2.5 py-2">Detalhes / Observações</th>
+                      <th className="px-2.5 py-2 border-r border-slate-300">Cat.</th>
+                      <th className="px-2.5 py-2 border-r border-slate-300">Bitola / Cód.</th>
+                      <th className="px-2.5 py-2 border-r border-slate-300">Qtd.</th>
+                      <th className="px-2.5 py-2 text-right border-r border-slate-300">Peso / Bal.</th>
+                      <th className="px-2.5 py-2">Detalhes / Obs.</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -548,7 +558,7 @@ export function PrintPreviewModal({
                       if (item.category === 'estribo') {
                         qtySummary = `${formatNumber(item.qtdPecas)} pçs · ${formatNumber(item.qtdPacotes)} pcts`;
                         if (item.medida) {
-                          const med = `Medida: ${item.medida}`;
+                          const med = `Med.: ${item.medida}`;
                           detailText = detailText ? `${med} · ${detailText}` : med;
                         }
                       } else if (item.category === 'bobina') {
@@ -565,18 +575,18 @@ export function PrintPreviewModal({
                         }
                         const sourceText =
                           item.hasLabel && item.hasScaleWeight
-                            ? 'Etiqueta + Balança Kg'
+                            ? 'Etiq. + Bal.'
                             : item.hasScaleWeight
-                              ? 'Balança Kg'
+                              ? 'Bal. (kg)'
                               : item.hasLabel
-                                ? 'Etiqueta'
+                                ? 'Etiq.'
                                 : '';
                         if (sourceText) {
                           detailText = detailText ? `${sourceText} · ${detailText}` : sourceText;
                         }
                       } else if (item.category === 'barra') {
                         qtySummary =
-                          item.qtdBarras > 0 ? `${formatNumber(item.qtdBarras)} barras` : 'Por peso';
+                          item.qtdBarras > 0 ? `${formatNumber(item.qtdBarras)} br` : 'Peso';
                         const etiquetaKg =
                           item.hasLabel || !item.hasScaleWeight ? item.kg : 0;
                         const scaleKg = item.hasScaleWeight ? item.scaleWeightKg : 0;
@@ -589,11 +599,11 @@ export function PrintPreviewModal({
                         }
                         const barraParts: string[] = [];
                         if (etiquetaKg > 0 && scaleKg > 0) {
-                          barraParts.push('Etiqueta + Balança Kg');
+                          barraParts.push('Etiq. + Bal.');
                         } else if (scaleKg > 0) {
-                          barraParts.push('Balança Kg');
+                          barraParts.push('Bal. (kg)');
                         } else if (item.hasLabel || etiquetaKg > 0) {
-                          barraParts.push('Etiqueta');
+                          barraParts.push('Etiq.');
                         }
                         if (item.labelCode) {
                           barraParts.push(`Cód.: ${item.labelCode}`);
@@ -607,8 +617,14 @@ export function PrintPreviewModal({
                         weightDisplay = '—';
                         const telaSpec = resolveTelaPopByCode(item.bitola);
                         if (telaSpec) {
-                          const telaInfo = `${telaSpec.nome} · Malha ${telaSpec.malha}`;
+                          const telaInfo = `${telaSpec.shortNome} · ${telaSpec.malha}`;
                           detailText = detailText ? `${telaInfo} · ${detailText}` : telaInfo;
+                        }
+                      } else if (item.category === 'outros_materiais') {
+                        qtySummary = item.unidades > 0 ? `${formatNumber(item.unidades)} un` : '—';
+                        if ((item.kgPorUnidade ?? 0) > 0) {
+                          const unitText = `${formatNumber(item.kgPorUnidade ?? 0, 3)} kg/un`;
+                          detailText = detailText ? `${unitText} · ${detailText}` : unitText;
                         }
                       } else if (item.category === 'arame') {
                         const m = getArameMetrics(item.unidades, item.kg, item.measurementMode);
@@ -616,32 +632,37 @@ export function PrintPreviewModal({
                         if (m.isVariedCoil) {
                           qtySummary =
                             m.unidades > 0
-                              ? `${formatNumber(m.unidades)} ${m.unidades === 1 ? 'bobina' : 'bobinas'}`
-                              : 'Bobina';
-                          const wireInfo = `${item.wireType === 'liso' ? 'Liso' : 'Torcido'} · Bobina (Kg variado)`;
+                              ? `${formatNumber(m.unidades)} bob.`
+                              : 'Bob.';
+                          const wireInfo = `${item.wireType === 'liso' ? 'Liso' : 'Torc.'} · Bob. kg var.`;
                           detailText = detailText ? `${wireInfo} · ${detailText}` : wireInfo;
                         } else {
                           qtySummary =
                             m.unidades > 0
                               ? `${formatNumber(m.unidades)} un · ${formatArameBoxes(m.unidades)}`
                               : '—';
-                          const wireInfo = item.wireType === 'liso' ? 'Arame Liso' : 'Arame Torcido';
+                          const wireInfo = item.wireType === 'liso' ? 'Liso' : 'Torc.';
                           detailText = detailText ? `${wireInfo} · ${detailText}` : wireInfo;
                         }
                       }
 
-                      if (item.notaFiscal?.trim()) {
-                        const nfText = `NF: ${item.notaFiscal.trim()}`;
+                      if (item.conferentes?.length) {
+                        const info = `Conf.: ${item.conferentes.join(', ')}`;
+                        detailText = detailText ? `${info} · ${detailText}` : info;
+                      }
+                      if (item.temConferenciaSemNome) detailText = `${detailText}${detailText ? ' · ' : ''}S/ resp.`;
+                      if (item.category !== 'estribo' && item.notaFiscal?.trim()) {
+                        const nfText = `NF ${item.notaFiscal.trim()}`;
                         detailText = detailText ? `${nfText} · ${detailText}` : nfText;
                       }
 
                       return (
                         <tr key={item.id} className="break-inside-avoid">
                           <td className="px-2.5 py-1.5 font-medium text-slate-900 border-r border-slate-200 whitespace-nowrap">
-                            {catMeta.label}
+                            {catMeta.shortLabel}
                           </td>
                           <td className="px-2.5 py-1.5 font-mono-num text-slate-800 border-r border-slate-200 whitespace-nowrap">
-                            {item.bitola}
+                            {item.category === 'outros_materiais' ? (item.materialName || item.bitola) : item.bitola}
                           </td>
                           <td className="px-2.5 py-1.5 font-mono-num text-slate-700 border-r border-slate-200 whitespace-nowrap">
                             {qtySummary}
@@ -661,7 +682,7 @@ export function PrintPreviewModal({
 
           {/* Minimal Sign-off Footer */}
           <footer className="pt-8 mt-8 border-t border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-[11px] text-slate-600">
-            <div>Conferido por: _____________________________________</div>
+            <div>Resp.: {responsaveis.length ? responsaveis.join(', ') : '—'}{faltaResponsavel ? ' · Há itens s/ resp.' : ''}</div>
             <div>Data: ____ / ____ / ________</div>
           </footer>
         </div>

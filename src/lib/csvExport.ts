@@ -1,6 +1,6 @@
 import {
   CATEGORY_MAP,
-  formatMonthLabel,
+  formatMonthShortLabel,
   getArameMetrics,
   type InventoryItem,
 } from '../types/inventory';
@@ -15,44 +15,48 @@ function escapeCsvCell(value: string | number | boolean): string {
 
 export function exportMonthlyCsv(monthKey: string, items: InventoryItem[]): void {
   const headers = [
-    'Mês Referência',
-    'Categoria',
-    'Tipo Arame',
+    'Mês',
+    'Cat.',
+    'Material',
+    'Kg/un',
+    'Arame',
     'Bitola',
-    'Medida (Estribo)',
-    'Qtd. Peças (Estribo)',
-    'Qtd. Pacotes (Estribo)',
-    'Unidades / Quantidade',
-    'Qtd. Barras',
+    'Med. (Estribo)',
+    'Pçs (Estribo)',
+    'Pcts (Estribo)',
+    'Un.',
+    'Barras',
     'Kg',
-    'Etiqueta',
-    'Código Etiqueta',
-    'Pesado na Balança',
-    'Peso Balança (Kg)',
-    'Nota Fiscal',
-    'Observações',
+    'Etiq.',
+    'Cód. Etiq.',
+    'Bal.',
+    'Peso Bal. (kg)',
+    'NF',
+    'Obs.',
   ];
 
   const rows = items.map((item) => {
-    const categoryLabel = CATEGORY_MAP[item.category].label;
+    const categoryLabel = CATEGORY_MAP[item.category].shortLabel;
     const wireLabel =
       item.category === 'arame'
         ? item.wireType === 'liso'
           ? 'Liso'
           : item.wireType === 'torcido'
-            ? 'Torcido'
+            ? 'Torc.'
             : '-'
         : '-';
 
     return [
-      formatMonthLabel(monthKey),
+      formatMonthShortLabel(monthKey),
       categoryLabel,
+      item.category === 'outros_materiais' ? item.materialName || item.bitola : '',
+      item.category === 'outros_materiais' && (item.kgPorUnidade ?? 0) > 0 ? item.kgPorUnidade ?? 0 : '',
       wireLabel,
       item.bitola,
       item.category === 'estribo' ? item.medida : '',
       item.category === 'estribo' ? item.qtdPecas : '',
       item.category === 'estribo' ? item.qtdPacotes : '',
-      item.category === 'bobina' || item.category === 'tela_pop'
+      item.category === 'bobina' || item.category === 'tela_pop' || item.category === 'outros_materiais'
         ? item.unidades
         : item.category === 'arame'
           ? getArameMetrics(item.unidades, item.kg, item.measurementMode).unidades
@@ -83,7 +87,7 @@ export function exportMonthlyCsv(monthKey: string, items: InventoryItem[]): void
       (item.category === 'barra' || item.category === 'bobina') && item.hasScaleWeight
         ? item.scaleWeightKg
         : '',
-      item.notaFiscal ?? '',
+      item.category === 'estribo' ? '' : (item.notaFiscal ?? ''),
       item.notes,
     ].map(escapeCsvCell);
   });

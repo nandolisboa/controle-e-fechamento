@@ -1,4 +1,4 @@
-export type MaterialCategory = 'estribo' | 'bobina' | 'barra' | 'tela_pop' | 'arame';
+export type MaterialCategory = 'estribo' | 'bobina' | 'barra' | 'tela_pop' | 'arame' | 'outros_materiais';
 export type MeasurementMode = 'unidade' | 'kg' | 'barras' | 'ambos';
 export type WireType = 'none' | 'liso' | 'torcido';
 
@@ -27,6 +27,8 @@ export interface InventoryItem {
   monthKey: string;
   category: MaterialCategory;
   bitola: string;
+  materialName?: string;
+  kgPorUnidade?: number;
   medida: string;
   qtdPecas: number;
   qtdPacotes: number;
@@ -41,6 +43,8 @@ export interface InventoryItem {
   wireType: WireType;
   notaFiscal?: string;
   notes: string;
+  conferentes?: string[];
+  temConferenciaSemNome?: boolean;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -48,6 +52,8 @@ export interface InventoryItem {
 export interface InventoryItemInput {
   category: MaterialCategory;
   bitola: string;
+  materialName?: string;
+  kgPorUnidade?: number;
   medida: string;
   qtdPecas: number;
   qtdPacotes: number;
@@ -62,6 +68,7 @@ export interface InventoryItemInput {
   wireType: WireType;
   notaFiscal?: string;
   notes: string;
+  conferentes?: string[];
 }
 
 export interface CategoryMeta {
@@ -77,28 +84,28 @@ export const CATEGORIES: CategoryMeta[] = [
     id: 'estribo',
     label: 'Estribo',
     shortLabel: 'Estribo',
-    description: 'Bitola, Medida, Qtd. Peças, Qtd. Pacotes e Kg',
+    description: 'Bitola, med., pçs, pcts e kg',
     bitolaPresets: ['3.8 mm', '4.2 mm', '5.0 mm', '6.0 mm'],
   },
   {
     id: 'bobina',
     label: 'Bobinas',
     shortLabel: 'Bobinas',
-    description: 'Bitola, Unidade e Etiqueta ou Balança (Kg)',
+    description: 'Bitola, un e etiq./bal. (kg)',
     bitolaPresets: ['3.8 mm', '4.2 mm', '5.0 mm', '6.0 mm'],
   },
   {
     id: 'barra',
     label: 'Barras',
     shortLabel: 'Barras',
-    description: 'Bitola, Qtd. Barras e Etiqueta ou Balança (Kg)',
+    description: 'Bitola, br e etiq./bal. (kg)',
     bitolaPresets: ['4.2 mm', '5.0 mm', '6.3 mm', '8.0 mm', '10.0 mm'],
   },
   {
     id: 'tela_pop',
     label: 'Telas Pop',
     shortLabel: 'Telas Pop',
-    description: 'Bitola e Quantidade',
+    description: 'Cód./bitola e qtd.',
     bitolaPresets: [
       'Q45 (3.4 mm)',
       'Q61 (3.4 mm)',
@@ -110,13 +117,21 @@ export const CATEGORIES: CategoryMeta[] = [
     id: 'arame',
     label: 'Arames',
     shortLabel: 'Arames',
-    description: 'Liso ou Torcido, Bitola, Unidades (1 kg) e Caixas (20 kg)',
+    description: 'Liso/torc., bitola, un (1 kg) e cx (20 kg)',
     bitolaPresets: [
       'BWG 18 (1.24 mm)',
       'BWG 16 (1.65 mm)',
       'BWG 14 (2.11 mm)',
       'BWG 12 (2.77 mm)',
+      'BWG 10 (3,40 mm)',
     ],
+  },
+  {
+    id: 'outros_materiais',
+    label: 'Outros materiais',
+    shortLabel: 'Outros',
+    description: 'Material, qtd. e kg/un',
+    bitolaPresets: [],
   },
 ];
 
@@ -126,6 +141,7 @@ export const CATEGORY_MAP: Record<MaterialCategory, CategoryMeta> = {
   barra: CATEGORIES[2],
   tela_pop: CATEGORIES[3],
   arame: CATEGORIES[4],
+  outros_materiais: CATEGORIES[5],
 };
 
 export interface TelaPopSpec {
@@ -251,9 +267,9 @@ export function formatArameBoxes(unidades: number): string {
     return `${formatNumber(caixas)} cx + ${formatNumber(avulsas, avulsas % 1 === 0 ? 0 : 2)} un`;
   }
   if (caixas > 0) {
-    return `${formatNumber(caixas)} ${caixas === 1 ? 'caixa' : 'caixas'}`;
+    return `${formatNumber(caixas)} cx`;
   }
-  return `${formatNumber(avulsas, avulsas % 1 === 0 ? 0 : 2)} un (avulso)`;
+  return `${formatNumber(avulsas, avulsas % 1 === 0 ? 0 : 2)} un av.`;
 }
 
 const MONTH_NAMES_PT = [
@@ -271,6 +287,21 @@ const MONTH_NAMES_PT = [
   'Dezembro',
 ];
 
+const MONTH_SHORT_PT = [
+  'Jan',
+  'Fev',
+  'Mar',
+  'Abr',
+  'Mai',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Set',
+  'Out',
+  'Nov',
+  'Dez',
+];
+
 export function formatMonthLabel(monthKey: string): string {
   const [yearStr, monthStr] = monthKey.split('-');
   const monthIdx = Number(monthStr) - 1;
@@ -278,6 +309,15 @@ export function formatMonthLabel(monthKey: string): string {
     return monthKey;
   }
   return `${MONTH_NAMES_PT[monthIdx]} ${yearStr}`;
+}
+
+export function formatMonthShortLabel(monthKey: string): string {
+  const [yearStr, monthStr] = monthKey.split('-');
+  const monthIdx = Number(monthStr) - 1;
+  if (!yearStr || Number.isNaN(monthIdx) || monthIdx < 0 || monthIdx > 11) {
+    return monthKey;
+  }
+  return `${MONTH_SHORT_PT[monthIdx]}/${yearStr}`;
 }
 
 export function getAdjacentMonthKey(monthKey: string, delta: number): string {
