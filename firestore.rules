@@ -63,7 +63,7 @@ service cloud.firestore {
         'ownerId', 'monthDocId', 'monthKey', 'category', 'bitola', 'medida',
         'qtdPecas', 'qtdPacotes', 'unidades', 'qtdBarras', 'kg',
         'measurementMode', 'hasLabel', 'labelCode', 'hasScaleWeight',
-        'scaleWeightKg', 'wireType', 'notaFiscal', 'notes', 'createdAt', 'updatedAt'
+        'scaleWeightKg', 'wireType', 'notaFiscal', 'notes', 'materialName', 'kgPorUnidade', 'conferentes', 'temConferenciaSemNome', 'createdAt', 'updatedAt'
       ]) &&
       data.ownerId is string &&
       data.ownerId == request.auth.uid &&
@@ -78,10 +78,15 @@ service cloud.firestore {
       data.monthKey.size() == 7 &&
       data.monthKey.matches('^[0-9]{4}-[0-9]{2}$') &&
       data.category is string &&
-      data.category in ['estribo', 'bobina', 'barra', 'tela_pop', 'arame'] &&
+      data.category in ['estribo', 'bobina', 'barra', 'tela_pop', 'arame', 'outros_materiais'] &&
       data.bitola is string &&
       data.bitola.size() >= 1 &&
       data.bitola.size() <= 60 &&
+      (!('materialName' in data) || (data.materialName is string && data.materialName.size() <= 60)) &&
+      (!('kgPorUnidade' in data) || isNonNegNum(data.kgPorUnidade)) &&
+      (!('conferentes' in data) || (data.conferentes is list && data.conferentes.size() <= 5 && (data.conferentes.size() == 0 || (data.conferentes[0] is string && data.conferentes[0].size() >= 1 && data.conferentes[0].size() <= 80)) && (data.conferentes.size() < 2 || (data.conferentes[1] is string && data.conferentes[1].size() >= 1 && data.conferentes[1].size() <= 80)) && (data.conferentes.size() < 3 || (data.conferentes[2] is string && data.conferentes[2].size() >= 1 && data.conferentes[2].size() <= 80)) && (data.conferentes.size() < 4 || (data.conferentes[3] is string && data.conferentes[3].size() >= 1 && data.conferentes[3].size() <= 80)) && (data.conferentes.size() < 5 || (data.conferentes[4] is string && data.conferentes[4].size() >= 1 && data.conferentes[4].size() <= 80)))) &&
+      (!('temConferenciaSemNome' in data) || data.temConferenciaSemNome is bool) &&
+      (data.category != 'outros_materiais' || (('materialName' in data && data.materialName is string && data.materialName.size() >= 1) && (data.unidades > 0 || ('kgPorUnidade' in data && data.kgPorUnidade > 0)))) &&
       data.medida is string &&
       data.medida.size() <= 60 &&
       isNonNegNum(data.qtdPecas) &&
@@ -165,7 +170,7 @@ service cloud.firestore {
           incoming().diff(existing()).affectedKeys().hasOnly([
             'category', 'bitola', 'medida', 'qtdPecas', 'qtdPacotes', 'unidades',
             'qtdBarras', 'kg', 'measurementMode', 'hasLabel', 'labelCode',
-            'hasScaleWeight', 'scaleWeightKg', 'wireType', 'notaFiscal', 'notes', 'updatedAt'
+            'hasScaleWeight', 'scaleWeightKg', 'wireType', 'notaFiscal', 'notes', 'materialName', 'kgPorUnidade', 'conferentes', 'temConferenciaSemNome', 'updatedAt'
           ])
         );
 
