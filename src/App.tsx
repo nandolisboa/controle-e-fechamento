@@ -20,6 +20,7 @@ import { ConsolidatedSummary } from './components/ConsolidatedSummary';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ExcelPreviewModal } from './components/ExcelPreviewModal';
 import { AuthGate } from './components/AuthGate';
+import { CreatePassword } from './components/CreatePassword';
 import { InventoryTable } from './components/InventoryTable';
 import { ItemFormModal } from './components/ItemFormModal';
 import { PrintPreviewModal } from './components/PrintPreviewModal';
@@ -70,6 +71,7 @@ import {
 function Workspace() {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
   const [monthsMap, setMonthsMap] = useState<Record<string, MonthRecord>>({});
   const [allItems, setAllItems] = useState<InventoryItem[]>([]);
@@ -707,6 +709,9 @@ function Workspace() {
               <div className="text-[11px] text-slate-400 truncate mt-0.5">
                 {user.email}
               </div>
+              {!user.providerData.some((provider) => provider.providerId === 'password') && (
+                <button type="button" onClick={() => setPasswordModalOpen(true)} className="mt-3 w-full h-9 px-3 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300 hover:text-white">Criar senha de acesso</button>
+              )}
               <button
                 type="button"
                 onClick={() => signOutUser()}
@@ -721,6 +726,7 @@ function Workspace() {
         </div>
       </aside>
 
+      {passwordModalOpen && <CreatePassword user={user} onClose={() => setPasswordModalOpen(false)} />}
       {/* Main Content Area */}
       <div className="flex-1 min-w-0 flex flex-col print-full">
         {/* Top Bar */}
@@ -740,6 +746,9 @@ function Workspace() {
               <LogOut className="w-4 h-4" />
               <span>Sair</span>
             </button>
+            {!user.providerData.some((provider) => provider.providerId === 'password') && (
+              <button type="button" onClick={() => setPasswordModalOpen(true)} className="sm:hidden h-10 px-3 rounded-lg border border-slate-300 text-sm font-medium text-slate-800">Criar senha</button>
+            )}
             <div className="flex items-center gap-2 text-sm min-w-0 truncate w-full sm:w-auto">
               <span className="text-slate-500 hidden sm:inline">Estoque Mensal</span>
               <span className="text-slate-300 hidden sm:inline">/</span>
