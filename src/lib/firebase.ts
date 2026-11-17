@@ -2,6 +2,11 @@ import { initializeApp } from 'firebase/app';
 import {
   browserLocalPersistence,
   browserSessionPersistence,
+  EmailAuthProvider,
+  linkWithCredential,
+  reauthenticateWithPopup,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   getAuth,
   GoogleAuthProvider,
   setPersistence,
@@ -91,6 +96,22 @@ export async function signInWithGoogle(rememberUser = true): Promise<User> {
   await setPersistence(auth, rememberUser ? browserLocalPersistence : browserSessionPersistence);
   const result = await signInWithPopup(auth, googleProvider);
   return result.user;
+}
+
+export async function signInWithPassword(password: string, rememberUser = true): Promise<User> {
+  await setPersistence(auth, rememberUser ? browserLocalPersistence : browserSessionPersistence);
+  const result = await signInWithEmailAndPassword(auth, 'aramesprojeto@gmail.com', password);
+  return result.user;
+}
+
+export async function createLinkedPassword(user: User, password: string): Promise<void> {
+  if (user.email?.toLowerCase() !== 'aramesprojeto@gmail.com' || !user.emailVerified) throw new Error('Conta não autorizada ou e-mail não verificado.');
+  await reauthenticateWithPopup(user, googleProvider);
+  await linkWithCredential(user, EmailAuthProvider.credential(user.email, password));
+}
+
+export async function resetLinkedPassword(): Promise<void> {
+  await sendPasswordResetEmail(auth, 'aramesprojeto@gmail.com');
 }
 
 export async function signOutUser(): Promise<void> {
