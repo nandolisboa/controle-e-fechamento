@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { signInWithGoogle } from '../lib/firebase';
+import { signInWithGoogle, signInWithPassword, resetLinkedPassword } from '../lib/firebase';
 
 export function AuthGate() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
   const [rememberUser, setRememberUser] = useState(() => {
     try { return window.localStorage.getItem('acogestao_lembrar_usuario') !== 'false'; }
     catch { return true; }
@@ -26,6 +28,25 @@ export function AuthGate() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handlePasswordLogin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true); setErrorMsg(null); setFeedback(null);
+    try {
+      try { window.localStorage.setItem('acogestao_lembrar_usuario', String(rememberUser)); } catch { /* no stored preference */ }
+      await signInWithPassword(password, rememberUser);
+      setPassword('');
+    } catch {
+      setErrorMsg('Não foi possível entrar com essa senha. Confira a senha ou use o acesso pelo Google.');
+    } finally { setLoading(false); }
+  }
+
+  async function handleReset() {
+    setLoading(true); setErrorMsg(null); setFeedback(null);
+    try { await resetLinkedPassword(); setFeedback('Se a senha já foi criada, verifique a caixa de entrada e o spam para redefini-la.'); }
+    catch { setErrorMsg('Não foi possível enviar o e-mail de redefinição.'); }
+    finally { setLoading(false); }
   }
 
   return (
@@ -60,6 +81,19 @@ export function AuthGate() {
               </div>
             )}
 
+            {feedback && <div role="status" className="p-3 rounded-lg bg-green-50 border border-green-200 text-xs text-green-800">{feedback}</div>}
+            <form onSubmit={handlePasswordLogin} className="space-y-3">
+              <label className="block text-sm font-medium text-slate-700">E-mail
+                <input type="email" autoComplete="username" value="aramesprojeto@gmail.com" readOnly className="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 bg-slate-50 text-sm" />
+              </label>
+              <label className="block text-sm font-medium text-slate-700">Senha
+                <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required className="mt-1 w-full h-11 px-3 rounded-xl border border-slate-300 text-sm" />
+              </label>
+              <button disabled={loading} type="submit" className="w-full h-11 rounded-xl bg-red-700 hover:bg-red-800 text-white text-sm font-medium disabled:opacity-60">Entrar com e-mail e senha</button>
+            </form>
+            <button type="button" disabled={loading} onClick={handleReset} className="w-full text-sm text-red-700 hover:underline">Esqueci minha senha</button>
+            <p className="text-xs text-slate-500 text-center">Para criar sua senha pela primeira vez, entre com Google e escolha Criar senha no menu.</p>
+            <div className="border-t border-slate-200" />
             <label className="flex items-center gap-2.5 px-1 text-sm text-slate-600 cursor-pointer select-none">
               <input type="checkbox" checked={rememberUser} onChange={(event) => setRememberUser(event.target.checked)} className="h-4 w-4 rounded border-slate-300 accent-red-600 focus:ring-2 focus:ring-red-600/20" />
               <span>Lembrar usuário</span>
